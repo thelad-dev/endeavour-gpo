@@ -5,6 +5,11 @@ alwaysApply: true
 
 # Tätigkeitsnachweis — endeavour-gpo
 
+> **Lesehinweis:** Chronologisch absteigend. Verbindlich ist **nur die „Noch offen (aktuell)"-Liste
+> des obersten Eintrags**. Alle älteren Einträge sind historisch; ihre Status- und Offen-Angaben
+> beschreiben den Stand von damals und sind als ~~überholt~~ markiert, sobald ein neuerer Eintrag
+> sie erledigt. Ältere Einträge nie als Arbeitsanweisung lesen.
+
 ## 2026-08-19 — Session-Fortsetzung: Repo live, no-mistakes gestartet
 
 **Status:** Repo öffentlich auf GitHub, beide Branches gepusht, no-mistakes-Pipeline läuft.
@@ -19,16 +24,17 @@ alwaysApply: true
 - Erster `no-mistakes axi run --yes`: übersprungen (Feature-Branch = `main`, leerer Diff nach Rebase)
 - Verifikation vor Push: 12/12 pytest grün, ruff clean
 
-**Noch offen:**
+**Noch offen (aktuell):**
 1. no-mistakes-Pipeline mit echtem Branch-Diff / PR mergen
 2. Produktivtest: `endeavour-gpo-register` + `samba-gpupdate` auf domain-joined Client
 3. Drucker-GPO (bewusst aus v0.1-Scope)
 
 ---
 
-## 2026-08-19 — Session-Freeze (Stand gesichert, Fortsetzung offen)
+## 2026-08-19 — Session-Freeze (Stand gesichert, Fortsetzung offen) — *historisch*
 
-**Status:** Implementierung v0.1 fertig, lokal gestaged, **noch kein Commit/Push/Repo**.
+**Status (damals):** Implementierung v0.1 fertig, lokal gestaged, ~~noch kein Commit/Push/Repo~~
+→ überholt durch Eintrag „Repo live, no-mistakes gestartet".
 
 **Erledigt:**
 - Paket `endeavour_gpo`: Parser (`Drives.xml`), ILT (`FilterGroup`/`FilterUser`/`FilterCollection`), `mount.cifs`-Mounter, `cpassword`-Entschlüsselung
@@ -37,14 +43,14 @@ alwaysApply: true
 - Ruff clean, GitHub-Actions-CI-Skeleton
 - `git init -b main`, alle Projektdateien **staged**
 
-**Noch offen (nächste Session):**
-1. Initial-Commit + Feature-Branch für no-mistakes
-2. Öffentliches Repo `thelad-dev/endeavour-gpo` anlegen (gh aktuell als `denladdi`, `thelad-dev` ist separater User)
-3. `no-mistakes init` + Pipeline (`/no-mistakes`, `/grep-loop-review-workflow`)
-4. Produktivtest: `endeavour-gpo-register` + `samba-gpupdate` auf domain-joined Client
-5. Drucker-GPO (bewusst aus v0.1-Scope)
+**Noch offen (Stand damals — überholt, nicht mehr abarbeiten):**
+1. ~~Initial-Commit + Feature-Branch für no-mistakes~~ → erledigt (`01eb24f`, `feature/initial-cse-v0.1`)
+2. ~~Öffentliches Repo `thelad-dev/endeavour-gpo` anlegen~~ → erledigt (Repo public, `origin` = SSH)
+3. ~~`no-mistakes init` + Pipeline~~ → erledigt
+4. Produktivtest: `endeavour-gpo-register` + `samba-gpupdate` auf domain-joined Client → weiterhin offen
+5. Drucker-GPO (bewusst aus v0.1-Scope) → weiterhin offen
 
-**Lokal fortsetzen:**
+**Lokal fortsetzen (damaliger Stand — nicht mehr gültig, Repo ist gepusht):**
 ```bash
 cd /home/ladwein/endeavour-gpo
 source .venv/bin/activate
@@ -54,7 +60,7 @@ git commit -m "..."   # staged files
 
 ---
 
-## 2026-08-19 — Initiales Modul: Samba CSE für AD Drive Maps (EndeavourOS)
+## 2026-08-19 — Initiales Modul: Samba CSE für AD Drive Maps (EndeavourOS) — *historisch*
 
 **Aufgabe:** Custom Client-Side-Extension für GPO Drive Maps auf EndeavourOS — Drives.xml parsen, ILT auswerten, mount.cifs; öffentliches GitHub-Repo `thelad-dev/endeavour-gpo`.
 
@@ -72,4 +78,4 @@ git commit -m "..."   # staged files
 
 **Verifikation:** 12/12 pytest grün, ruff clean (2026-08-19, `.venv` Python 3.11)
 
-**Offen:** GitHub-Repo unter Account `thelad-dev` (gh aktuell als `denladdi`); produktiver Domain-Join-Test mit `samba-gpupdate`
+**Offen (Stand damals — überholt):** ~~GitHub-Repo unter Account `thelad-dev` (gh aktuell als `denladdi`)~~ → erledigt; produktiver Domain-Join-Test mit `samba-gpupdate` → weiterhin offen
