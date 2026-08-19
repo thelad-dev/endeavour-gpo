@@ -15,6 +15,10 @@ log = logging.getLogger(__name__)
 
 try:
     from samba.gp.gpclass import drop_privileges, expand_pref_variables, gp_misc_applier, gp_xml_ext
+
+    # samba_log methods take (message, data=None) — the second argument is structured data
+    # that Samba serialises separately, NOT a printf argument. Always pre-format the message
+    # with `%`, otherwise the placeholder is emitted literally. See tests/test_cse_logging.py.
     from samba.gp.util.logging import log as samba_log
 except ImportError as exc:  # pragma: no cover - exercised only on domain clients
     raise ImportError(
@@ -73,7 +77,7 @@ class gp_drive_maps_ext(gp_xml_ext, gp_misc_applier):
         try:
             token = _fetch_security_token(self.username, self.lp, self.creds)
         except Exception as exc:
-            samba_log.warn("Could not fetch security token for ILT: %s", exc)
+            samba_log.warn("Could not fetch security token for ILT: %s" % exc)
         return FilterContext(username=self.username, security_token=token)
 
     def _expand_uri(self, drive: DriveMap, gpo: Any) -> Optional[str]:
@@ -177,11 +181,11 @@ class gp_drive_maps_ext(gp_xml_ext, gp_misc_applier):
 
             for drive in drives:
                 if drive.is_hidden:
-                    samba_log.debug("Skipping hidden drive %s", drive.uid)
+                    samba_log.debug("Skipping hidden drive %s" % drive.uid)
                     continue
 
                 if drive.filters and not evaluate_filters(drive.filters, ctx):
-                    samba_log.debug("Drive %s filtered out by ILT", drive.uid)
+                    samba_log.debug("Drive %s filtered out by ILT" % drive.uid)
                     continue
 
                 uri = self._expand_uri(drive, gpo)
