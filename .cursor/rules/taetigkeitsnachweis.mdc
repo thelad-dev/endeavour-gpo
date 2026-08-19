@@ -22,7 +22,8 @@ alwaysApply: true
 - Initial-Commit `01eb24f` auf `main`
 - `no-mistakes init` abgeschlossen
 - Erster `no-mistakes axi run --yes`: übersprungen (Feature-Branch = `main`, leerer Diff nach Rebase)
-- Verifikation vor Push: 12/12 pytest grün, ruff clean
+- Verifikation vor Push (Stand `fa070ab`): 12/12 pytest grün, ruff clean — Testzahl wächst mit den
+  no-mistakes-Folgecommits, maßgeblich ist immer `pytest` im Arbeitsverzeichnis
 
 **Noch offen (aktuell):**
 1. no-mistakes-Pipeline mit echtem Branch-Diff / PR mergen

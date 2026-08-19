@@ -71,6 +71,14 @@ The CSE subclasses Samba's `gp_xml_ext` and `gp_misc_applier` — the same patte
 
 Legacy GPP **`cpassword`** fields can be decrypted (MS-GPPREF static AES key). Prefer Kerberos/`sec=krb5` and empty `userName`/`cpassword` in new GPO items.
 
+Drive items that do carry `userName` need a `mount.cifs` credentials file. It is written per drive letter (lowercase) to:
+
+```text
+~/.cache/endeavour-gpo/credentials/drive-<letter>.cred
+```
+
+with mode `0600`, rewritten on each apply, and deleted again when the drive is unmapped. `--rsop` only prints the resulting `mount.cifs` command and never writes credentials to disk.
+
 ## Development
 
 ```bash
