@@ -13,6 +13,7 @@ from typing import Optional
 
 from endeavour_gpo.credentials import decrypt_cpassword
 from endeavour_gpo.drives.parser import DriveMap
+from endeavour_gpo.notify import notify_user
 
 log = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ class CifsMounter:
         if runtime_root is not None:
             self.runtime_root = runtime_root
         else:
-            self.runtime_root = Path(f"/run/user/{self.uid}/endeavour-gpo/drives")
+            self.runtime_root = self.home / "netzlaufwerke"
 
     def build_spec(self, drive: DriveMap, *, write_credentials: bool = True) -> MountSpec:
         letter = drive.mount_letter or "X"
@@ -109,6 +110,7 @@ class CifsMounter:
         if self._is_mounted(spec.target):
             log.debug("Already mounted: %s", spec.target)
         else:
+            self._release_conflicting_gio_mount(drive)
             cmd = [
                 "mount.cifs",
                 spec.source,
@@ -119,11 +121,23 @@ class CifsMounter:
             log.info("Mounting %s -> %s", spec.source, spec.target)
             proc = subprocess.run(cmd, capture_output=True, text=True)
             if proc.returncode != 0:
-                raise MountError(proc.stderr.strip() or proc.stdout.strip() or "mount.cifs failed")
+                message = proc.stderr.strip() or proc.stdout.strip() or "mount.cifs failed"
+                self.notify_mount_failure(drive, message)
+                raise MountError(message)
 
         if spec.systemd_unit_name:
             self._install_systemd_unit(spec)
         return spec
+
+    def notify_mount_failure(self, drive: DriveMap, error: str) -> None:
+        letter = drive.mount_letter or "?"
+        label = drive.label or drive.path or letter
+        notify_user(
+            self.uid,
+            self.user_sam,
+            "Netzlaufwerk konnte nicht verbunden werden",
+            "%s (%s): %s" % (label, letter, error),
+        )
 
     def unmount(self, drive: DriveMap) -> None:
         letter = drive.mount_letter or "X"
@@ -208,6 +222,16 @@ WantedBy=default.target
             )
             unit_path.unlink(missing_ok=True)
 
+    def _release_conflicting_gio_mount(self, drive: DriveMap) -> None:
+        """Best-effort unmount of Samba built-in gio mounts so GPO mount.cifs wins."""
+        gio = shutil.which("gio")
+        if gio is None:
+            return
+        uri = drive_gio_uri(drive)
+        if not uri:
+            return
+        subprocess.run([gio, "mount", "--unmount", uri], capture_output=True, check=False)
+
     @staticmethod
     def _is_mounted(path: Path) -> bool:
         try:
@@ -224,3 +248,10 @@ WantedBy=default.target
 
 def which_mount_cifs() -> Optional[str]:
     return shutil.which("mount.cifs")
+
+
+def drive_gio_uri(drive: DriveMap) -> str:
+    source = drive.cifs_source()
+    if not source:
+        return ""
+    return "smb:" + source

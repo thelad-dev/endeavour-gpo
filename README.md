@@ -2,13 +2,15 @@
 
 Custom Samba **Group Policy Client-Side Extension (CSE)** for **EndeavourOS** (and other Linux domain members) that applies Active Directory **Drive Maps** preferences from `Drives.xml` using **`mount.cifs`**.
 
-Windows clients get mapped drives from GPO Preferences out of the box. Samba ships a built-in drive-map CSE that uses `gio mount` and only partially supports item-level targeting. This project closes that gap for EndeavourOS deployments:
+Windows clients get mapped drives from GPO Preferences out of the box. Samba ships a built-in drive-map CSE (`gp_drive_maps_user_ext`, `gio mount`) that only partially supports item-level targeting. This project closes that gap for EndeavourOS deployments:
 
 - Parses `User/Preferences/Drives/Drives.xml` from the GPO SYSVOL cache (via Samba's `gp_xml_ext` framework)
 - Respects GPO **security filtering** (handled by Samba when building the GPO list)
 - Evaluates **item-level targeting** (`FilterGroup`, `FilterCollection`, `FilterUser`, …)
 - Mounts shares with **`mount.cifs`** (Kerberos/`sec=krb5` by default, optional GPP credentials)
 - Tracks applied state in Samba's GPO cache for clean unapply on logoff / policy change
+- **Coexistence:** runs in parallel with Samba's built-in drive CSE; registered last in `gpext.conf` so Endeavour mappings take priority (gio mounts are released before `mount.cifs`)
+- **Mount failures** trigger a desktop notification (`notify-send`) for the logged-in user
 
 ## Requirements
 
@@ -40,7 +42,7 @@ sudo samba-gpupdate --target=user --rsop
 Mounts appear under:
 
 ```text
-/run/user/<uid>/endeavour-gpo/drives/<letter>/
+~/netzlaufwerke/<letter>/
 ```
 
 Persistent (`reconnect`) mappings also install a systemd user mount unit under `~/.config/systemd/user/`.

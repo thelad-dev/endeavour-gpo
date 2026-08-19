@@ -10,25 +10,44 @@ alwaysApply: true
 > beschreiben den Stand von damals und sind als ~~überholt~~ markiert, sobald ein neuerer Eintrag
 > sie erledigt. Ältere Einträge nie als Arbeitsanweisung lesen.
 
-## 2026-08-19 — Session-Fortsetzung: Repo live, no-mistakes gestartet
+## 2026-08-19 — Produktionsentscheidungen umgesetzt (Pfad, Notify, Koexistenz)
 
-**Status:** Repo öffentlich auf GitHub, beide Branches gepusht, no-mistakes-Pipeline läuft.
+**Status:** Feature-Branch mit Entscheidungen 4–8; PR folgt.
 
-**Erledigt:**
-- `gh auth` auf Account `thelad-dev` umgestellt (SSH-Git-Protokoll)
-- Öffentliches Repo [`thelad-dev/endeavour-gpo`](https://github.com/thelad-dev/endeavour-gpo) angelegt
-- Git-Remote `origin`: `git@github.com:thelad-dev/endeavour-gpo.git`
-- `main` und `feature/initial-cse-v0.1` gepusht
-- Initial-Commit `01eb24f` auf `main`
-- `no-mistakes init` abgeschlossen
-- Erster `no-mistakes axi run --yes`: übersprungen (Feature-Branch = `main`, leerer Diff nach Rebase)
-- Verifikation vor Push (Stand `fa070ab`): 12/12 pytest grün, ruff clean — Testzahl wächst mit den
-  no-mistakes-Folgecommits, maßgeblich ist immer `pytest` im Arbeitsverzeichnis
+**Entscheidungen umgesetzt:**
+- **Koexistenz:** Samba-Standard-CSE parallel; `endeavour-gpo-register` sortiert unsere CSE ans Ende von `gpext.conf` (GPO/`mount.cifs` hat Vorrang); gio-Mount wird vor `mount.cifs` best-effort gelöst
+- **Mount-Pfad:** `~/netzlaufwerke/<letter>/` (statt `/run/user/.../endeavour-gpo/drives/`)
+- **Fehler:** Desktop-Notification via `notify-send` bei Mount-Fehlern
+- **Produktivtest NB64** morgen im Firmennetz (heute nur VPN S2S)
+- **Drucker-GPO** erst nach erfolgreichem Drive-Mapping
+
+**Verifikation:** 23/23 pytest grün, ruff clean
 
 **Noch offen (aktuell):**
-1. no-mistakes-Pipeline mit echtem Branch-Diff / PR mergen
-2. Produktivtest: `endeavour-gpo-register` + `samba-gpupdate` auf domain-joined Client
-3. Drucker-GPO (bewusst aus v0.1-Scope)
+1. PR reviewen/mergen
+2. Produktivtest NB64
+3. Drucker-GPO (nach Drive-Mapping)
+
+---
+
+## 2026-08-19 — PR #1 gemergt, v0.1 auf main — *historisch*
+
+**Status:** Feature-Branch in `main` gemergt (`2b7d896`); Remote-Feature-Branch gelöscht.
+
+**Erledigt:**
+- PR [#1](https://github.com/thelad-dev/endeavour-gpo/pull/1) gemergt (Merge-Commit `2b7d896`)
+- Pipeline-Fixes (samba_log, Credentials-Pfad, Tests, README) jetzt auf `main`
+- Lokales `main` mit `origin/main` synchron
+
+**Noch offen (aktuell):**
+1. **Produktivtest auf NB64** (`ladwein@nb64`): `endeavour-gpo-register` + `samba-gpupdate`
+   - Geplant **morgen** im Firmennetz (heute nur per VPN S2S verbunden, nicht ideal für AD/GPO-Test)
+   - Vor Test klären: Kerberos-only vs. GPP-`cpassword`-Laufwerke; Koexistenz mit Samba-Standard-CSE
+2. **Drucker-GPO:** erst nach erfolgreichem Drive-Mapping-Produktivtest (NB64) — bewusst nicht v0.1
+
+---
+
+## 2026-08-19 — Session-Fortsetzung: Repo live, no-mistakes gestartet — *historisch*
 
 ---
 
