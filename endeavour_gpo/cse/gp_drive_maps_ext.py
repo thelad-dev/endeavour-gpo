@@ -84,7 +84,7 @@ class gp_drive_maps_ext(gp_xml_ext, gp_misc_applier):
         try:
             return expand_pref_variables(uri, gptpath, self.lp, username=self.username)
         except NameError as exc:
-            samba_log.warn("Failed to expand drive map variables: %s (%s)", exc, drive.path)
+            samba_log.warn("Failed to expand drive map variables: %s (%s)" % (exc, drive.path))
             return None
 
     def unapply(self, guid: str, key: str, val: str) -> None:
@@ -111,7 +111,7 @@ class gp_drive_maps_ext(gp_xml_ext, gp_misc_applier):
             try:
                 self._mounter().unmount(drive)
             except MountError as exc:
-                samba_log.warn("Unapply unmount failed for %s: %s", key, exc)
+                samba_log.warn("Unapply unmount failed for %s: %s" % (key, exc))
         self.cache_remove_attribute(guid, key)
 
     def apply(self, guid: str, key: str, drive: DriveMap) -> None:
@@ -149,7 +149,7 @@ class gp_drive_maps_ext(gp_xml_ext, gp_misc_applier):
                 mounter.unmount(drive)
         except MountError as exc:
             if drive.bypass_errors:
-                samba_log.warn("Drive map bypassErrors: %s (%s)", key, exc)
+                samba_log.warn("Drive map bypassErrors: %s (%s)" % (key, exc))
             else:
                 raise
 
@@ -232,7 +232,7 @@ class gp_drive_maps_ext(gp_xml_ext, gp_misc_applier):
                 continue
             label = drive.label or drive.mount_letter or drive.uid
             if drive.should_mount:
-                spec = CifsMounter(self.username).build_spec(drive)
+                spec = CifsMounter(self.username).build_spec(drive, write_credentials=False)
                 output[label] = "mount.cifs %s %s -o %s" % (
                     spec.source,
                     spec.target,

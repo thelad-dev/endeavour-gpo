@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from endeavour_gpo.credentials import encrypt_cpassword
 from endeavour_gpo.drives.mounter import CifsMounter, MountError
 from endeavour_gpo.drives.parser import DriveMap
 
@@ -53,6 +54,33 @@ def test_build_spec_persistent_unit(tmp_path):
     spec = mounter.build_spec(_drive(persistent=True))
     assert spec.systemd_unit_name == "gpo-drive-s.mount"
     assert "_netdev" in spec.options
+
+
+def test_credentials_file_is_reused_and_removed_on_unmount(tmp_path):
+    mounter = _mounter(tmp_path)
+    drive = _drive(username="EXAMPLE\\svc", password_enc=encrypt_cpassword("secret"))
+    cred_dir = tmp_path / "home" / ".cache" / "endeavour-gpo" / "credentials"
+
+    first = mounter.build_spec(drive).credentials_file
+    second = mounter.build_spec(drive).credentials_file
+
+    assert first == second
+    assert list(cred_dir.iterdir()) == [first]
+    assert "password=secret" in first.read_text(encoding="utf-8")
+    assert first.stat().st_mode & 0o777 == 0o600
+
+    mounter.unmount(drive)
+    assert not first.exists()
+
+
+def test_build_spec_without_writing_credentials(tmp_path):
+    mounter = _mounter(tmp_path)
+    drive = _drive(username="EXAMPLE\\svc", password_enc=encrypt_cpassword("secret"))
+
+    spec = mounter.build_spec(drive, write_credentials=False)
+
+    assert "credentials=%s" % spec.credentials_file in spec.options
+    assert not spec.credentials_file.exists()
 
 
 def test_mount_calls_mount_cifs(tmp_path):
