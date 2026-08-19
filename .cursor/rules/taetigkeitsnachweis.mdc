@@ -1,0 +1,54 @@
+---
+description: Fortlaufender Tätigkeitsnachweis für Agentenarbeiten, Entscheidungen, Prüfungen und Deployments.
+alwaysApply: true
+---
+
+# Tätigkeitsnachweis — endeavour-gpo
+
+## 2026-08-19 — Session-Freeze (Stand gesichert, Fortsetzung offen)
+
+**Status:** Implementierung v0.1 fertig, lokal gestaged, **noch kein Commit/Push/Repo**.
+
+**Erledigt:**
+- Paket `endeavour_gpo`: Parser (`Drives.xml`), ILT (`FilterGroup`/`FilterUser`/`FilterCollection`), `mount.cifs`-Mounter, `cpassword`-Entschlüsselung
+- Samba-CSE `gp_drive_maps_ext.py` (`gp_xml_ext` + `gp_misc_applier`, Name `Endeavour/Preferences/Drives`)
+- 12 Tests grün (`.venv`: `uv venv` + `uv pip install -e ".[dev]"`)
+- Ruff clean, GitHub-Actions-CI-Skeleton
+- `git init -b main`, alle Projektdateien **staged**
+
+**Noch offen (nächste Session):**
+1. Initial-Commit + Feature-Branch für no-mistakes
+2. Öffentliches Repo `thelad-dev/endeavour-gpo` anlegen (gh aktuell als `denladdi`, `thelad-dev` ist separater User)
+3. `no-mistakes init` + Pipeline (`/no-mistakes`, `/grep-loop-review-workflow`)
+4. Produktivtest: `endeavour-gpo-register` + `samba-gpupdate` auf domain-joined Client
+5. Drucker-GPO (bewusst aus v0.1-Scope)
+
+**Lokal fortsetzen:**
+```bash
+cd /home/ladwein/endeavour-gpo
+source .venv/bin/activate
+pytest
+git commit -m "..."   # staged files
+```
+
+---
+
+## 2026-08-19 — Initiales Modul: Samba CSE für AD Drive Maps (EndeavourOS)
+
+**Aufgabe:** Custom Client-Side-Extension für GPO Drive Maps auf EndeavourOS — Drives.xml parsen, ILT auswerten, mount.cifs; öffentliches GitHub-Repo `thelad-dev/endeavour-gpo`.
+
+**Ausgangslage:** Leerer Workspace. Samba bringt `gp_drive_maps_user_ext` mit (`gio mount`, nur FilterRunOnce). Ziel: vollständigere ILT + mount.cifs für EndeavourOS.
+
+**Entscheidungen:**
+- Paket `endeavour_gpo` mit Parser, Filter-Evaluator, CifsMounter getrennt von CSE
+- CSE erbt `gp_xml_ext` + `gp_misc_applier`, eigener Name `Endeavour/Preferences/Drives`, GUID `{E7A4B2C1-9F3D-4E8A-B6C5-1D2E3F4A5B6C}`
+- Mount unter `/run/user/<uid>/endeavour-gpo/drives/<letter>/`, persistent via systemd user mount unit
+- Kerberos default (`sec=krb5`); legacy `cpassword` optional via MS-GPPREF AES
+- ILT: FilterGroup (SID), FilterUser, FilterCollection; unsupported → skip + warn
+- Drucker-GPO: bewusst nicht in v0.1 (Scope Drive Maps)
+
+**Geänderte/neu angelegte Module:** `endeavour_gpo/drives/*`, `endeavour_gpo/cse/gp_drive_maps_ext.py`, `endeavour_gpo/cli.py`, Tests, CI, README
+
+**Verifikation:** 12/12 pytest grün, ruff clean (2026-08-19, `.venv` Python 3.11)
+
+**Offen:** GitHub-Repo unter Account `thelad-dev` (gh aktuell als `denladdi`); produktiver Domain-Join-Test mit `samba-gpupdate`

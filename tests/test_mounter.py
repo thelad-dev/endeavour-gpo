@@ -1,0 +1,96 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from endeavour_gpo.drives.mounter import CifsMounter, MountError
+from endeavour_gpo.drives.parser import DriveMap
+
+
+def _drive(**overrides) -> DriveMap:
+    base = dict(
+        uid="{test}",
+        name="S:",
+        action="U",
+        path=r"\\server\share",
+        label="Share",
+        letter="S",
+        persistent=False,
+        use_letter=True,
+        this_drive="NOCHANGE",
+        all_drives="NOCHANGE",
+        username=None,
+        password_enc=None,
+        bypass_errors=False,
+        changed=None,
+    )
+    base.update(overrides)
+    return DriveMap(**base)
+
+
+def _mounter(tmp_path: Path) -> CifsMounter:
+    return CifsMounter(
+        "EXAMPLE\\testuser",
+        runtime_root=tmp_path / "drives",
+        uid=1000,
+        gid=1000,
+        home=tmp_path / "home",
+    )
+
+
+def test_build_spec_krb5(tmp_path):
+    mounter = _mounter(tmp_path)
+    spec = mounter.build_spec(_drive())
+    assert spec.source == "//server/share"
+    assert spec.target == tmp_path / "drives" / "S"
+    assert "sec=krb5" in spec.options
+    assert spec.systemd_unit_name is None
+
+
+def test_build_spec_persistent_unit(tmp_path):
+    mounter = _mounter(tmp_path)
+    spec = mounter.build_spec(_drive(persistent=True))
+    assert spec.systemd_unit_name == "gpo-drive-s.mount"
+    assert "_netdev" in spec.options
+
+
+def test_mount_calls_mount_cifs(tmp_path):
+    mounter = _mounter(tmp_path)
+
+    with pytest.MonkeyPatch.context() as mp:
+        import endeavour_gpo.drives.mounter as mounter_mod
+
+        def fake_run(cmd, **kwargs):
+            class Result:
+                returncode = 0
+                stderr = ""
+                stdout = ""
+
+            return Result()
+
+        mp.setattr(mounter_mod.subprocess, "run", fake_run)
+        mp.setattr(mounter, "_is_mounted", lambda path: False)
+        spec = mounter.mount(_drive())
+
+    assert spec.target.exists()
+
+
+def test_mount_failure(tmp_path):
+    mounter = _mounter(tmp_path)
+
+    with pytest.MonkeyPatch.context() as mp:
+        import endeavour_gpo.drives.mounter as mounter_mod
+
+        def fail_run(cmd, **kwargs):
+            class Result:
+                returncode = 1
+                stderr = "permission denied"
+                stdout = ""
+
+            return Result()
+
+        mp.setattr(mounter_mod.subprocess, "run", fail_run)
+        mp.setattr(mounter, "_is_mounted", lambda path: False)
+        with pytest.raises(MountError, match="permission denied"):
+            mounter.mount(_drive())
