@@ -7,7 +7,6 @@ import os
 import pwd
 import shutil
 import subprocess
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -59,7 +58,7 @@ class CifsMounter:
         else:
             self.runtime_root = Path(f"/run/user/{self.uid}/endeavour-gpo/drives")
 
-    def build_spec(self, drive: DriveMap) -> MountSpec:
+    def build_spec(self, drive: DriveMap, *, write_credentials: bool = True) -> MountSpec:
         letter = drive.mount_letter or "X"
         source = drive.cifs_source()
         if not source and drive.should_mount:
@@ -77,10 +76,12 @@ class CifsMounter:
 
         creds_file: Optional[Path] = None
         if drive.username:
-            password = ""
-            if drive.password_enc:
-                password = decrypt_cpassword(drive.password_enc)
-            creds_file = self._write_credentials(drive.username, password)
+            creds_file = self._credentials_path(letter)
+            if write_credentials:
+                password = ""
+                if drive.password_enc:
+                    password = decrypt_cpassword(drive.password_enc)
+                self._write_credentials(creds_file, drive.username, password)
             options.append("credentials=%s" % creds_file)
         else:
             options.append("sec=krb5")
@@ -128,6 +129,7 @@ class CifsMounter:
         letter = drive.mount_letter or "X"
         target = self.runtime_root / letter
         self._remove_systemd_unit(letter)
+        self._credentials_path(letter).unlink(missing_ok=True)
 
         if target.exists() and self._is_mounted(target):
             proc = subprocess.run(["umount", str(target)], capture_output=True, text=True)
@@ -139,13 +141,15 @@ class CifsMounter:
             except OSError:
                 pass
 
-    def _write_credentials(self, username: str, password: str) -> Path:
+    def _credentials_path(self, letter: str) -> Path:
         cred_dir = self.home / ".cache" / "endeavour-gpo" / "credentials"
-        cred_dir.mkdir(parents=True, exist_ok=True)
-        fd, path = tempfile.mkstemp(prefix="drive-", dir=cred_dir)
-        os.close(fd)
-        cred_path = Path(path)
-        cred_path.write_text("username=%s\npassword=%s\n" % (username, password), encoding="utf-8")
+        return cred_dir / ("drive-%s.cred" % letter.lower())
+
+    def _write_credentials(self, cred_path: Path, username: str, password: str) -> Path:
+        cred_path.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(cred_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as creds:
+            creds.write("username=%s\npassword=%s\n" % (username, password))
         os.chmod(cred_path, 0o600)
         return cred_path
 
