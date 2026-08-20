@@ -47,3 +47,4 @@ def test_queue_name_umlaut_folding():
         persistent=False,
     )
     assert p.queue_name() == "endeavour-sophos-geschaftsleitung-assistenz"
+    assert p.smb_uri() == "smb://SOPHOS/Gesch%C3%A4ftsleitung-Assistenz"

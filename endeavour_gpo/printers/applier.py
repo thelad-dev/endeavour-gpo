@@ -92,7 +92,9 @@ class CupsPrinterApplier:
         if printer.comment or printer.name:
             base.extend(["-D", printer.comment or printer.name])
 
-        for model in ("everywhere", "raw"):
+        # smb:// is not IPP Everywhere — try raw first to avoid noisy fallbacks.
+        models = ("raw",) if uri.startswith("smb:") else ("everywhere", "raw")
+        for model in models:
             cmd = list(base) + ["-m", model]
             log.info(
                 "%s CUPS queue %s -> %s (-m %s)",
@@ -105,8 +107,8 @@ class CupsPrinterApplier:
             if proc.returncode == 0:
                 return
             err = proc.stderr.strip() or proc.stdout.strip() or "lpadmin failed"
-            if model == "everywhere":
-                log.warning("lpadmin -m everywhere failed for %s: %s; trying raw", queue, err)
+            if model != models[-1]:
+                log.warning("lpadmin -m %s failed for %s: %s; trying next", model, queue, err)
                 continue
             self.notify_failure(printer, err)
             raise PrinterApplyError(err)
@@ -166,9 +168,8 @@ class CupsPrinterApplier:
             return "lpadmin -x %s" % queue
         uri = printer.smb_uri()
         bits = [
-            "lpadmin -p %s -v %s -m everywhere -o auth-info-required=negotiate -E"
-            % (queue, uri)
-        ]
+        "lpadmin -p %s -v %s -m raw -o auth-info-required=negotiate -E" % (queue, uri)
+    ]
         if printer.location:
             bits.append("-L %r" % printer.location)
         if printer.comment or printer.name:
