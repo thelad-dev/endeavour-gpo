@@ -12,7 +12,7 @@ alwaysApply: true
 
 ## 2026-08-20 — gpupdate-CLI, Auto/Remote, Drucker-CSE
 
-**Status:** Feature-Branch `feature/gpupdate-auto-remote-printers` gepusht; PR folgt/erstellt; NB64-Redeploy ausstehend (Host kurz nicht erreichbar).
+**Status:** PR #4 gemergt (`b91ce3c` auf `main`). NB64-Redeploy ausstehend (Host war „No route to host“).
 
 **Umgesetzt:**
 1. **`endeavour-gpupdate`** — Windows-`gpupdate /force` (User + Kerberos-ccache; `--all-sessions`, `--rsop`, `--computer`)
@@ -22,12 +22,11 @@ alwaysApply: true
 
 **Register:** registriert Drive+Printer-CSE, installiert Units/Hooks.
 
-**Verifikation:** 38/38 pytest, ruff clean (lokal). NB64-Produktivlauf noch offen (No route to host).
+**Verifikation:** 38/38 pytest, ruff clean (lokal). NB64-Produktivlauf noch offen.
 
 **Noch offen (aktuell):**
-1. NB64: `git pull` + `sudo endeavour-gpo-register` + `endeavour-gpupdate --force` → CUPS-Queues prüfen
-2. PR mergen nach CI/grün
-3. `no-mistakes update`
+1. NB64: `git pull` + `sudo endeavour-gpo-register` + `sudo endeavour-gpupdate --force` → CUPS-Queues + Timer prüfen
+2. `no-mistakes update`
 
 ---
 
