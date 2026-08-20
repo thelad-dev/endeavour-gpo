@@ -140,6 +140,30 @@ def _active_gui_sessions() -> list[tuple[str, int]]:
     return sorted(found.items(), key=lambda x: x[1])
 
 
+def _invoking_user() -> tuple[str, int]:
+    """Resolve the interactive user when started via sudo/pkexec."""
+    for key in ("SUDO_USER", "PKEXEC_UID"):
+        if key == "SUDO_USER":
+            name = os.environ.get("SUDO_USER")
+            if name and name != "root":
+                try:
+                    pw = pwd.getpwnam(name)
+                    return pw.pw_name, pw.pw_uid
+                except KeyError:
+                    pass
+        elif key == "PKEXEC_UID":
+            raw = os.environ.get("PKEXEC_UID")
+            if raw and raw.isdigit():
+                try:
+                    pw = pwd.getpwuid(int(raw))
+                    if pw.pw_name != "root":
+                        return pw.pw_name, pw.pw_uid
+                except KeyError:
+                    pass
+    pw = pwd.getpwuid(os.getuid())
+    return pw.pw_name, pw.pw_uid
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="endeavour-gpupdate",
@@ -220,8 +244,13 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"Benutzer nicht gefunden: {name}", file=sys.stderr)
                     return 1
             else:
-                pw = pwd.getpwuid(os.getuid())
-                name, uid = pw.pw_name, pw.pw_uid
+                name, uid = _invoking_user()
+                if name == "root":
+                    print(
+                        "Als root ohne SUDO_USER: bitte -U <benutzer> oder --all-sessions nutzen.",
+                        file=sys.stderr,
+                    )
+                    return 1
             rc = _user_update(
                 username=name,
                 uid=uid,
