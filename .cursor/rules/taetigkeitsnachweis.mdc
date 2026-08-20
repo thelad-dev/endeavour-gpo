@@ -10,23 +10,28 @@ alwaysApply: true
 > beschreiben den Stand von damals und sind als ~~überholt~~ markiert, sobald ein neuerer Eintrag
 > sie erledigt. Ältere Einträge nie als Arbeitsanweisung lesen.
 
-## 2026-08-20 — gpupdate-CLI, Auto/Remote, Drucker-CSE
+## 2026-08-20 — NB64 Redeploy + AC-Standby aus + Printer-URI-Fix
 
-**Status:** PR #4 gemergt (`b91ce3c` auf `main`). NB64-Redeploy ausstehend (Host war „No route to host“).
+**Status:** NB64 wieder online; endeavour-gpo aktuell; Standby bei Netz aus; 6 CUPS-Queues aktiv.
 
-**Umgesetzt:**
-1. **`endeavour-gpupdate`** — Windows-`gpupdate /force` (User + Kerberos-ccache; `--all-sessions`, `--rsop`, `--computer`)
-2. **Auto:** systemd-Timer 90 min + RandomDelay 30 min; Login-Service; `apply group policies = yes` via `/etc/samba/endeavour-gpo.conf`
-3. **Remote:** SSH-Skript `endeavour-gpupdate-remote <host>` + Socket `127.0.0.1:46327` (Accept=yes)
-4. **Drucker:** CSE `Endeavour/Preferences/Printers` — SharedPrinter → CUPS `lpadmin`/`smb://`/`negotiate`
-
-**Register:** registriert Drive+Printer-CSE, installiert Units/Hooks.
-
-**Verifikation:** 38/38 pytest, ruff clean (lokal). NB64-Produktivlauf noch offen.
+**Erledigt:**
+- `main` auf NB64, `endeavour-gpo-register`, Timer/Socket aktiv, `apply group policies = yes`
+- **Bugfix** `sudo endeavour-gpupdate` → `SUDO_USER` (PR #5)
+- **Bugfix** smb-URI Umlaute percent-encoded; `-m raw` für smb (PR #6)
+- Drucker: Buchhaltung, Ei, Technik, Geschäftsleitung-Assistenz, Cottbus, Labeldrucker-H
+- Laufwerke unverändert: `Q_IT`, `Z_PUBLIC`, `H_ladwein`
+- **AC-Standby aus (KDE):** `~/.config/powerdevilrc` `[AC]` AutoSuspend/Lid/PowerButton = NoAction
+- **logind:** `/etc/systemd/logind.conf.d/90-no-sleep-on-ac.conf` (`HandleLidSwitchExternalPower=ignore`, IdleAction=ignore, Suspend/Hibernate-Keys ignore)
 
 **Noch offen (aktuell):**
-1. NB64: `git pull` + `sudo endeavour-gpo-register` + `sudo endeavour-gpupdate --force` → CUPS-Queues + Timer prüfen
-2. `no-mistakes update`
+1. `no-mistakes update`
+2. Optional: Batterie-Profil bewusst belassen (Sleep weiterhin möglich ohne Netz)
+
+---
+
+## 2026-08-20 — gpupdate-CLI, Auto/Remote, Drucker-CSE — *historisch*
+
+**Status:** PR #4 gemergt; Redeploy/Printer-Fixes → siehe neuer Eintrag.
 
 ---
 
