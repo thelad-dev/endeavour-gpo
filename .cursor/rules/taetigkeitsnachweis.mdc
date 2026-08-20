@@ -10,23 +10,56 @@ alwaysApply: true
 > beschreiben den Stand von damals und sind als ~~überholt~~ markiert, sobald ein neuerer Eintrag
 > sie erledigt. Ältere Einträge nie als Arbeitsanweisung lesen.
 
-## 2026-08-19 — Produktionsentscheidungen umgesetzt (Pfad, Notify, Koexistenz)
+## 2026-08-20 — Produktivtest NB64 erfolgreich
 
-**Status:** Feature-Branch mit Entscheidungen 4–8; PR folgt.
+**Status:** endeavour-gpo auf NB64 installiert, CSE registriert, Drive-Maps gemountet.
+
+**Ausgangslage:** NB64 im Firmennetz, `ssh nb64` von VM88, NOPASSWD-Sudo für `ladwein`, gültiges Kerberos-Ticket.
+
+**Setup auf NB64:**
+- `python-cryptography` / `python-pip` / `python-pycryptodome` (Arch): ohne `cryptography` startete `samba-gpupdate` nicht
+- Repo-Clone `~/endeavour-gpo` (`main` @ `3cbf8d7`), `pip install -e ".[dev]" --break-system-packages`
+- `sudo endeavour-gpo-register` → Eintrag in `/var/lib/samba/gpext.conf`
+- 23/23 pytest auf dem Client grün
+
+**Anwenden (wichtig):** Samba 4.24 erwartet `--target=User` (nicht `user`). Ohne `-U` gilt die Maschinenidentität `NB64$` — dann falscher Home-Pfad. Funktionierender Aufruf:
+```bash
+sudo env KRB5CCNAME=/tmp/krb5cc_$(id -u) \
+  samba-gpupdate --target=User -U ladwein --use-kerberos=required --force
+```
+
+**Ergebnis:**
+- GPO `U_Laufwerk-IT` → `//dfs/IT` → `~/netzlaufwerke/Q` (cifs, sec=krb5)
+- GPO `U_Laufwerk-PUBLIC` → `//dfs/public` → `~/netzlaufwerke/Z` (cifs, sec=krb5)
+- Inhalt lesbar; Samba-Standard-CSE (`gio`) parallel aktiv
+
+**Doku-Nachzug (lokal):** README + `endeavour-gpo-register`-Hinweis auf Samba-4.24-Flags (`User`, `-U`, Kerberos-ccache).
+
+**Noch offen (aktuell):**
+1. Drucker-GPO
+2. `no-mistakes update` (ggf. noch durch fremde Pipeline-Läufe blockiert)
+3. Optional: Login-/Autostart-Hook für User-`samba-gpupdate` (sonst nur manuell/`-U`)
+4. Doku-Nachzug committen/pushen (README + register-Hinweis)
+
+---
+
+## 2026-08-19 — Produktionsentscheidungen umgesetzt (Pfad, Notify, Koexistenz) — *historisch*
+
+**Status:** PR #2 gemergt (`3cbf8d7`); Produktions-Tuning auf `main`.
+~~Produktivtest NB64 morgen~~ → erledigt 2026-08-20.
 
 **Entscheidungen umgesetzt:**
 - **Koexistenz:** Samba-Standard-CSE parallel; `endeavour-gpo-register` sortiert unsere CSE ans Ende von `gpext.conf` (GPO/`mount.cifs` hat Vorrang); gio-Mount wird vor `mount.cifs` best-effort gelöst
-- **Mount-Pfad:** `~/netzlaufwerke/<letter>/` (statt `/run/user/.../endeavour-gpo/drives/`)
+- **Mount-Pfad:** `~/netzlaufwerke/<letter>/`
 - **Fehler:** Desktop-Notification via `notify-send` bei Mount-Fehlern
-- **Produktivtest NB64** morgen im Firmennetz (heute nur VPN S2S)
 - **Drucker-GPO** erst nach erfolgreichem Drive-Mapping
 
 **Verifikation:** 23/23 pytest grün, ruff clean
 
-**Noch offen (aktuell):**
-1. PR reviewen/mergen
-2. Produktivtest NB64
-3. Drucker-GPO (nach Drive-Mapping)
+**Noch offen (Stand damals — überholt):**
+1. ~~Produktivtest NB64~~ → erledigt
+2. Drucker-GPO (nach Drive-Mapping)
+3. `no-mistakes update`
 
 ---
 

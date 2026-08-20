@@ -32,11 +32,14 @@ Registration writes an entry to `/var/lib/samba/gpext.conf` and loads the CSE on
 
 ## Usage
 
-After registration, drive maps apply with the normal Samba gpupdate flow:
+After registration, drive maps apply with the Samba gpupdate flow for the **logged-in user**
+(Samba 4.24+: `--target=User`; without `-U` the machine account is used and mounts land in the wrong home):
 
 ```bash
-sudo samba-gpupdate --target=user --force
-sudo samba-gpupdate --target=user --rsop
+sudo env KRB5CCNAME=/tmp/krb5cc_$(id -u) \
+  samba-gpupdate --target=User -U "$USER" --use-kerberos=required --force
+sudo env KRB5CCNAME=/tmp/krb5cc_$(id -u) \
+  samba-gpupdate --target=User -U "$USER" --use-kerberos=required --rsop
 ```
 
 Mounts appear under:

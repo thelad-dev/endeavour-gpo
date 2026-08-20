@@ -46,7 +46,10 @@ def register_cse() -> int:
         "Coexistence: Samba built-in gp_drive_maps_user_ext (gio) may stay enabled; "
         "this CSE runs last in gpext.conf and takes priority via mount.cifs under ~/netzlaufwerke/."
     )
-    print("Run: sudo samba-gpupdate --target=user --force")
+    print(
+        "Run: sudo env KRB5CCNAME=/tmp/krb5cc_$(id -u) "
+        "samba-gpupdate --target=User -U \"$USER\" --use-kerberos=required --force"
+    )
     return 0
 
 
