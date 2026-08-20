@@ -12,7 +12,7 @@ alwaysApply: true
 
 ## 2026-08-20 — Mount-Titel + AD-Home-Laufwerk
 
-**Status:** Feature-Branch `feature/mount-titles-and-home`.
+**Status:** PR #3 gemergt; auf NB64 verifiziert (`Q_IT`, `Z_PUBLIC`, `H_ladwein`).
 
 **Entscheidungen:**
 - Mount-Ordner: `~/netzlaufwerke/<Buchstabe>_<Titel>/` (z. B. `Q_IT`, `Z_PUBLIC`, `H_ladwein`); Titel aus GPO-`label` (Klammerzusätze weg), sonst Share-Name
@@ -21,13 +21,12 @@ alwaysApply: true
 
 **Geändert:** `drives/parser.py` (`mount_dirname`), `drives/mounter.py`, `drives/home.py` (neu), `cse/gp_drive_maps_ext.py`, Tests, README
 
-**Verifikation:** 29/29 pytest, ruff clean (lokal)
+**Verifikation:** 29/29 pytest, ruff clean; NB64 gpupdate: drei cifs-Mounts lesbar
 
 **Noch offen (aktuell):**
-1. NB64 Redeploy + gpupdate-Verifikation (Q_IT / Z_PUBLIC / H_ladwein)
-2. CLI `endeavour-gpupdate` + Auto-/Remote-Refresh (Design freigegeben ausstehend)
-3. Drucker-GPO (SharedPrinter → CUPS)
-4. `no-mistakes update`
+1. CLI `endeavour-gpupdate` + Auto-/Remote-Refresh (Design: Freigabe Remote-Variante ausstehend)
+2. Drucker-GPO (SharedPrinter → CUPS; GPOs `U_Drucker_*` / `\\SOPHOS\…` vorhanden)
+3. `no-mistakes update`
 
 ---
 
