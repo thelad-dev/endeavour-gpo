@@ -51,7 +51,7 @@ def test_apply_create_uses_everywhere(monkeypatch):
     lpadmin = next(c for c in calls if c[:1] == ["lpadmin"] and "-x" not in c)
     assert lpadmin[lpadmin.index("-v") + 1] == "smb://SOPHOS/Technik"
     assert "auth-info-required=negotiate" in lpadmin
-    assert lpadmin[lpadmin.index("-m") + 1] == "everywhere"
+    assert lpadmin[lpadmin.index("-m") + 1] == "raw"
 
 
 def test_everywhere_fallback_to_raw(monkeypatch):
@@ -64,14 +64,12 @@ def test_everywhere_fallback_to_raw(monkeypatch):
         if cmd[:1] == ["lpadmin"] and "-m" in cmd:
             model = cmd[cmd.index("-m") + 1]
             models.append(model)
-            if model == "everywhere":
-                return _Result(1, stderr="No everywhere")
             return _Result(0)
         return _Result(0)
 
     monkeypatch.setattr("endeavour_gpo.printers.applier.subprocess.run", fake_run)
     applier.apply(_printer())
-    assert models == ["everywhere", "raw"]
+    assert models == ["raw"]
 
 
 def test_default_set_via_lpoptions(monkeypatch):

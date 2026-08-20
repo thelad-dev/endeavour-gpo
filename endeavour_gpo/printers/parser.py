@@ -9,6 +9,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+from urllib.parse import quote
 
 from endeavour_gpo.drives.filters import GppFilter, parse_filters_element
 
@@ -62,20 +63,23 @@ class SharedPrinterMap:
         return self.action == ACTION_DELETE
 
     def smb_uri(self) -> str:
+        """UNC → CUPS smb:// URI (path segments percent-encoded for Umlaute)."""
         path = (self.path or "").strip()
         if not path:
             return ""
-        normalized = path.replace("\\", "/")
-        if normalized.startswith("//"):
-            return "smb:" + normalized
-        return "smb://" + normalized.lstrip("/")
+        normalized = path.replace("\\", "/").lstrip("/")
+        if not normalized:
+            return ""
+        parts = [p for p in normalized.split("/") if p]
+        encoded = "/".join(quote(p, safe="") for p in parts)
+        return "smb://" + encoded
 
     def queue_name(self) -> str:
-        source = self.smb_uri().removeprefix("smb://").strip("/")
-        if not source:
+        unc = (self.path or "").replace("\\", "/").strip("/")
+        if not unc:
             raw = self.name or self.uid or "printer"
             return "endeavour-" + _sanitize_queue_part(raw)
-        parts = [p for p in source.split("/") if p]
+        parts = [p for p in unc.split("/") if p]
         if len(parts) >= 2:
             body = "-".join(_sanitize_queue_part(p) for p in parts[:2])
         else:
