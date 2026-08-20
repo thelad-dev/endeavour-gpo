@@ -1,0 +1,13 @@
+[Unit]
+Description=endeavour-gpo: Group Policy refresh after graphical login
+Documentation=https://github.com/thelad-dev/endeavour-gpo
+After=graphical.target network-online.target winbind.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/endeavour-gpo/endeavour-gpupdate-login.sh
+RemainAfterExit=no
+
+[Install]
+WantedBy=graphical.target

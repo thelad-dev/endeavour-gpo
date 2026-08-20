@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "endeavour-gpo"
 version = "0.1.0"
-description = "Samba GPO Client-Side Extension for AD drive maps on EndeavourOS (mount.cifs, ILT)"
+description = "Samba GPO CSEs for AD drive maps and printers on EndeavourOS (mount.cifs, CUPS, ILT)"
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
 requires-python = ">=3.10"
 authors = [{ name = "thelad-dev" }]
-keywords = ["samba", "gpo", "active-directory", "endeavouros", "cifs", "drive-maps"]
+keywords = ["samba", "gpo", "active-directory", "endeavouros", "cifs", "drive-maps", "cups", "printers"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: No Input/Output (Daemon)",
@@ -33,6 +33,7 @@ dev = [
 
 [project.scripts]
 endeavour-gpo-register = "endeavour_gpo.cli:register_cse"
+endeavour-gpupdate = "endeavour_gpo.gpupdate:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
