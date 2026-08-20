@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Printers clsid="{1F577D12-3D1B-471e-A1B7-060317597B9C}">
+  <SharedPrinter clsid="{9A5E9697-9095-436d-A0EE-4D128FDFBCE5}"
+                 name="Technik"
+                 status="Technik"
+                 image="2"
+                 changed="2026-04-13 08:06:47"
+                 uid="{9F9311F7-2984-4F65-912C-9A0B880CD51B}"
+                 bypassErrors="1">
+    <Properties action="U"
+                comment=""
+                path="\\SOPHOS\Technik"
+                location="EG"
+                default="1"
+                skipLocal="0"
+                deleteAll="0"
+                persistent="0"
+                deleteMaps="0"
+                port=""/>
+    <Filters>
+      <FilterGroup bool="AND" not="0"
+                   name="EXAMPLE\Print-Users"
+                   sid="S-1-5-21-1234567890-1234567890-1234567890-1001"
+                   userContext="1"
+                   primaryGroup="0"
+                   localGroup="0"/>
+    </Filters>
+  </SharedPrinter>
+  <SharedPrinter clsid="{9A5E9697-9095-436d-A0EE-4D128FDFBCE5}"
+                 name="Archiv"
+                 status="Archiv"
+                 image="2"
+                 changed="2024-01-15 10:00:00"
+                 uid="{22222222-2222-2222-2222-222222222222}">
+    <Properties action="D"
+                comment=""
+                path="\\SOPHOS\Archiv"
+                location=""
+                default="0"
+                skipLocal="0"
+                deleteAll="0"
+                persistent="0"
+                deleteMaps="0"
+                port=""/>
+  </SharedPrinter>
+  <SharedPrinter clsid="{9A5E9697-9095-436d-A0EE-4D128FDFBCE5}"
+                 name="Hidden"
+                 status="Hidden"
+                 image="2"
+                 changed="2024-01-15 10:00:00"
+                 uid="{33333333-3333-3333-3333-333333333333}"
+                 disabled="1">
+    <Properties action="U"
+                path="\\SOPHOS\Hidden"
+                default="0"
+                skipLocal="0"
+                deleteAll="0"
+                persistent="0"/>
+  </SharedPrinter>
+  <PortPrinter clsid="{C3A739D2-0C3A-4b4b-9A1C-1A0A0A0A0A0A}"
+               name="USB-Label"
+               uid="{44444444-4444-4444-4444-444444444444}">
+    <Properties action="U" port="USB001" path=""/>
+  </PortPrinter>
+</Printers>

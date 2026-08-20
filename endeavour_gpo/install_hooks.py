@@ -1,0 +1,96 @@
+"""Install systemd units, Samba include, and login hooks."""
+
+from __future__ import annotations
+
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+UNIT_FILES = (
+    "endeavour-gpupdate.service",
+    "endeavour-gpupdate.timer",
+    "endeavour-gpupdate-remote@.service",
+    "endeavour-gpupdate-remote.socket",
+    "endeavour-gpupdate-login.service",
+)
+
+SMB_INCLUDE = """# Managed by endeavour-gpo-register — do not edit by hand unless needed.
+[global]
+    apply group policies = yes
+"""
+
+
+def _package_data_dir() -> Path:
+    here = Path(__file__).resolve().parent.parent / "packaging" / "systemd"
+    if here.is_dir():
+        return here
+    raise FileNotFoundError("packaging/systemd not found next to endeavour_gpo package")
+
+
+def install_systemd_units() -> None:
+    src_dir = _package_data_dir()
+    dest = Path("/etc/systemd/system")
+    for name in UNIT_FILES:
+        src = src_dir / name
+        if not src.is_file():
+            print(f"Warnung: Unit fehlt: {src}", file=sys.stderr)
+            continue
+        target = dest / name
+        shutil.copy2(src, target)
+        print(f"Installiert {target}")
+
+    script_src = Path(__file__).resolve().parent.parent / "scripts" / "endeavour-gpupdate-login.sh"
+    if script_src.is_file():
+        script_dest = Path("/usr/local/lib/endeavour-gpo/endeavour-gpupdate-login.sh")
+        script_dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(script_src, script_dest)
+        os.chmod(script_dest, 0o755)
+        print(f"Installiert {script_dest}")
+
+    remote_src = Path(__file__).resolve().parent.parent / "scripts" / "remote-gpupdate.sh"
+    if remote_src.is_file():
+        remote_dest = Path("/usr/local/bin/endeavour-gpupdate-remote")
+        shutil.copy2(remote_src, remote_dest)
+        os.chmod(remote_dest, 0o755)
+        print(f"Installiert {remote_dest}")
+
+    subprocess.run(["systemctl", "daemon-reload"], check=False)
+    subprocess.run(["systemctl", "enable", "--now", "endeavour-gpupdate.timer"], check=False)
+    subprocess.run(
+        ["systemctl", "enable", "--now", "endeavour-gpupdate-remote.socket"],
+        check=False,
+    )
+    subprocess.run(
+        ["systemctl", "enable", "endeavour-gpupdate-login.service"],
+        check=False,
+    )
+
+
+def ensure_samba_apply_gpo() -> None:
+    conf = Path("/etc/samba/endeavour-gpo.conf")
+    conf.write_text(SMB_INCLUDE, encoding="utf-8")
+    print(f"Geschrieben {conf}")
+
+    smb = Path("/etc/samba/smb.conf")
+    if not smb.is_file():
+        print("Warnung: /etc/samba/smb.conf fehlt — include manuell setzen.", file=sys.stderr)
+        return
+    text = smb.read_text(encoding="utf-8")
+    marker = "include = /etc/samba/endeavour-gpo.conf"
+    if marker in text:
+        return
+    lines = text.splitlines(keepends=True)
+    out: list[str] = []
+    inserted = False
+    for line in lines:
+        out.append(line)
+        if not inserted and line.strip().lower() == "[global]":
+            out.append(marker + "\n")
+            inserted = True
+    if not inserted:
+        out.insert(0, marker + "\n")
+    smb.write_text("".join(out), encoding="utf-8")
+    print(f"Include in {smb} ergänzt")
+    subprocess.run(["systemctl", "try-reload-or-restart", "winbind"], check=False)

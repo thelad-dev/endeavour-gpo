@@ -1,93 +1,96 @@
 # endeavour-gpo
 
-Custom Samba **Group Policy Client-Side Extension (CSE)** for **EndeavourOS** (and other Linux domain members) that applies Active Directory **Drive Maps** preferences from `Drives.xml` using **`mount.cifs`**.
+Custom Samba **Group Policy Client-Side Extensions (CSE)** for **EndeavourOS** (and other Linux domain members):
 
-Windows clients get mapped drives from GPO Preferences out of the box. Samba ships a built-in drive-map CSE (`gp_drive_maps_user_ext`, `gio mount`) that only partially supports item-level targeting. This project closes that gap for EndeavourOS deployments:
-
-- Parses `User/Preferences/Drives/Drives.xml` from the GPO SYSVOL cache (via Samba's `gp_xml_ext` framework)
-- Respects GPO **security filtering** (handled by Samba when building the GPO list)
-- Evaluates **item-level targeting** (`FilterGroup`, `FilterCollection`, `FilterUser`, …)
-- Mounts shares with **`mount.cifs`** (Kerberos/`sec=krb5` by default, optional GPP credentials)
-- Tracks applied state in Samba's GPO cache for clean unapply on logoff / policy change
-- **Coexistence:** runs in parallel with Samba's built-in drive CSE; registered last in `gpext.conf` so Endeavour mappings take priority (gio mounts are released before `mount.cifs`)
-- **Mount failures** trigger a desktop notification (`notify-send`) for the logged-in user
+- **Drive Maps** from `Drives.xml` via **`mount.cifs`** (plus AD `homeDirectory`/`homeDrive`)
+- **Shared Printers** from `Printers.xml` via **CUPS** (`lpadmin` + `smb://` + Kerberos)
+- **`endeavour-gpupdate`** — Windows-like `gpupdate /force`
+- Automatic refresh (~90+0–30 min) and remote trigger (SSH + localhost socket)
 
 ## Requirements
 
-- Domain-joined EndeavourOS / Arch Linux host with Samba (`samba`, `python-samba`)
-- `cifs-utils` (`mount.cifs`)
-- Kerberos ticket or domain credentials for the logging-in user
-- Root privileges for `samba-gpupdate` (standard Samba GPO apply path)
+- Domain-joined EndeavourOS / Arch with Samba (`samba`, `python-samba`), `cifs-utils`, `cups`
+- Kerberos ticket for the logged-in user
+- Root for registration / `samba-gpupdate`
 
 ## Installation
 
 ```bash
 git clone https://github.com/thelad-dev/endeavour-gpo.git
 cd endeavour-gpo
-pip install -e ".[dev]"
+sudo python3 -m pip install -e ".[dev]" --break-system-packages
 sudo endeavour-gpo-register
 ```
 
-Registration writes an entry to `/var/lib/samba/gpext.conf` and loads the CSE on the next `samba-gpupdate`.
+Registration:
+
+- Writes drive + printer CSEs into `/var/lib/samba/gpext.conf` (last = priority)
+- Enables `apply group policies = yes` via `/etc/samba/endeavour-gpo.conf`
+- Installs systemd timer, login hook, and remote socket (`127.0.0.1:46327`)
 
 ## Usage
 
-After registration, drive maps apply with the Samba gpupdate flow for the **logged-in user**
-(Samba 4.24+: `--target=User`; without `-U` the machine account is used and mounts land in the wrong home):
+```bash
+# wie Windows: gpupdate /force
+sudo endeavour-gpupdate --force
+
+# alle aktiven Sitzungen (Timer / Remote)
+sudo endeavour-gpupdate --force --all-sessions
+
+# RSOP
+sudo endeavour-gpupdate --rsop
+```
+
+### Remote (vom Richtlinienserver / Admin-PC)
+
+Windows `Invoke-GPUpdate` nutzt Task Scheduler — unter Linux:
 
 ```bash
-sudo env KRB5CCNAME=/tmp/krb5cc_$(id -u) \
-  samba-gpupdate --target=User -U "$USER" --use-kerberos=required --force
-sudo env KRB5CCNAME=/tmp/krb5cc_$(id -u) \
-  samba-gpupdate --target=User -U "$USER" --use-kerberos=required --rsop
+# empfohlen: SSH
+endeavour-gpupdate-remote nb64
+# entspricht: ssh nb64 'sudo systemctl start endeavour-gpupdate.service'
+
+# lokal auf dem Client (Socket, nur localhost)
+printf '' | nc 127.0.0.1 46327
 ```
 
-Mounts appear under:
+### Mounts
 
 ```text
-~/netzlaufwerke/<letter>_<title>/
+~/netzlaufwerke/<letter>_<title>/   # z. B. Q_IT, Z_PUBLIC, H_ladwein
 ```
 
-Examples: `Q_IT`, `Z_PUBLIC`, `H_ladwein` (title from GPO label, or the share name).
+AD-Home (`homeDirectory`/`homeDrive`) wird zusätzlich zu Preferences gemappt.
 
-**AD home drive:** `homeDirectory` / `homeDrive` on the user object (e.g. `H:` → `\\dfs\homes\<user>`)
-are mapped automatically in addition to Preferences `Drives.xml`.
+### Printers
 
-Persistent (`reconnect`) mappings also install a systemd user mount unit under `~/.config/systemd/user/`.
+CUPS-Queues `endeavour-<server>-<share>` (z. B. `endeavour-sophos-technik`) mit
+`auth-info-required=negotiate`. PortPrinter/LocalPrinter: noch nicht (skip + Warnung).
 
 ## Architecture
 
 ```text
-samba-gpupdate
-  └── gp_ext_loader → endeavour_gpo.cse.gp_drive_maps_ext
-        ├── endeavour_gpo.drives.parser   (Drives.xml → datamodel)
-        ├── endeavour_gpo.drives.filters  (ILT evaluation)
-        └── endeavour_gpo.drives.mounter (mount.cifs / systemd)
+endeavour-gpupdate / samba-gpupdate / winbind timer
+  └── CSEs
+        ├── Endeavour/Preferences/Drives   → mount.cifs + AD home
+        └── Endeavour/Preferences/Printers → CUPS SharedPrinter
 ```
-
-The CSE subclasses Samba's `gp_xml_ext` and `gp_misc_applier` — the same pattern as upstream `gp_drive_maps_ext.py`, but with Endeavour-specific mounting and fuller ILT support.
 
 ## Item-level targeting
 
 | Filter | Support |
 |--------|---------|
-| `FilterGroup` | Yes (SID / name via security token) |
-| `FilterCollection` | Yes (nested AND/OR) |
+| `FilterGroup` | Yes |
+| `FilterCollection` | Yes |
 | `FilterUser` | Yes |
-| `FilterRunOnce` | Yes (no persistent systemd unit) |
-| `FilterOrgUnit`, `FilterSite`, WMI, LDAP, … | Logged as unsupported → item skipped |
+| `FilterRunOnce` | Yes |
+| andere | skip + warn |
 
 ## Security note
 
-Legacy GPP **`cpassword`** fields can be decrypted (MS-GPPREF static AES key). Prefer Kerberos/`sec=krb5` and empty `userName`/`cpassword` in new GPO items.
+Legacy GPP **`cpassword`** can be decrypted (MS-GPPREF). Prefer Kerberos. Credential files for drive maps (if any): `~/.cache/endeavour-gpo/credentials/drive-<letter>.cred` mode `0600`.
 
-Drive items that do carry `userName` need a `mount.cifs` credentials file. It is written per drive letter (lowercase) to:
-
-```text
-~/.cache/endeavour-gpo/credentials/drive-<letter>.cred
-```
-
-with mode `0600`, rewritten on each apply, and deleted again when the drive is unmapped. `--rsop` only prints the resulting `mount.cifs` command and never writes credentials to disk.
+Remote socket binds **localhost only**; cross-host refresh uses **SSH**.
 
 ## Development
 
