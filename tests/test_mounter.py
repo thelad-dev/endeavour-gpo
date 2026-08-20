@@ -44,7 +44,7 @@ def test_build_spec_krb5(tmp_path):
     mounter = _mounter(tmp_path)
     spec = mounter.build_spec(_drive())
     assert spec.source == "//server/share"
-    assert spec.target == tmp_path / "drives" / "S"
+    assert spec.target == tmp_path / "drives" / "S_Share"
     assert "sec=krb5" in spec.options
     assert spec.systemd_unit_name is None
 
@@ -52,7 +52,7 @@ def test_build_spec_krb5(tmp_path):
 def test_build_spec_persistent_unit(tmp_path):
     mounter = _mounter(tmp_path)
     spec = mounter.build_spec(_drive(persistent=True))
-    assert spec.systemd_unit_name == "gpo-drive-s.mount"
+    assert spec.systemd_unit_name == "gpo-drive-s_share.mount"
     assert "_netdev" in spec.options
 
 

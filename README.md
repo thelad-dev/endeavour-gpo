@@ -45,8 +45,13 @@ sudo env KRB5CCNAME=/tmp/krb5cc_$(id -u) \
 Mounts appear under:
 
 ```text
-~/netzlaufwerke/<letter>/
+~/netzlaufwerke/<letter>_<title>/
 ```
+
+Examples: `Q_IT`, `Z_PUBLIC`, `H_ladwein` (title from GPO label, or the share name).
+
+**AD home drive:** `homeDirectory` / `homeDrive` on the user object (e.g. `H:` → `\\dfs\homes\<user>`)
+are mapped automatically in addition to Preferences `Drives.xml`.
 
 Persistent (`reconnect`) mappings also install a systemd user mount unit under `~/.config/systemd/user/`.
 
