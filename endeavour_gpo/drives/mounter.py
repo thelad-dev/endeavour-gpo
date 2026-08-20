@@ -61,11 +61,12 @@ class CifsMounter:
 
     def build_spec(self, drive: DriveMap, *, write_credentials: bool = True) -> MountSpec:
         letter = drive.mount_letter or "X"
+        dirname = drive.mount_dirname
         source = drive.cifs_source()
         if not source and drive.should_mount:
             raise MountError(f"Drive map {drive.uid} has no UNC path")
 
-        target = self.runtime_root / letter
+        target = self.runtime_root / dirname
         options = [
             "uid=%d" % self.uid,
             "gid=%d" % self.gid,
@@ -92,7 +93,7 @@ class CifsMounter:
 
         unit_name = None
         if drive.persistent and not drive.run_once:
-            unit_name = "gpo-drive-%s.mount" % letter.lower()
+            unit_name = "gpo-drive-%s.mount" % dirname.lower().replace("/", "-")
 
         return MountSpec(
             source=source,
@@ -105,6 +106,7 @@ class CifsMounter:
     def mount(self, drive: DriveMap) -> MountSpec:
         spec = self.build_spec(drive)
         spec.target.parent.mkdir(parents=True, exist_ok=True)
+        self._release_legacy_letter_mount(drive)
         spec.target.mkdir(parents=True, exist_ok=True)
 
         if self._is_mounted(spec.target):
@@ -141,10 +143,26 @@ class CifsMounter:
 
     def unmount(self, drive: DriveMap) -> None:
         letter = drive.mount_letter or "X"
-        target = self.runtime_root / letter
-        self._remove_systemd_unit(letter)
+        dirname = drive.mount_dirname
+        target = self.runtime_root / dirname
+        self._remove_systemd_unit(dirname)
         self._credentials_path(letter).unlink(missing_ok=True)
+        self._umount_path(target)
+        self._release_legacy_letter_mount(drive)
 
+    def _release_legacy_letter_mount(self, drive: DriveMap) -> None:
+        """Unmount old ~/netzlaufwerke/<letter>/ targets after rename to Letter_Title."""
+        letter = drive.mount_letter
+        if not letter or letter == drive.mount_dirname:
+            return
+        legacy = self.runtime_root / letter
+        try:
+            self._umount_path(legacy)
+        except MountError as exc:
+            log.warning("Could not release legacy mount %s: %s", legacy, exc)
+        self._remove_systemd_unit(letter)
+
+    def _umount_path(self, target: Path) -> None:
         if target.exists() and self._is_mounted(target):
             proc = subprocess.run(["umount", str(target)], capture_output=True, text=True)
             if proc.returncode != 0:
@@ -211,10 +229,18 @@ WantedBy=default.target
             capture_output=True,
         )
 
-    def _remove_systemd_unit(self, letter: str) -> None:
-        unit_name = "gpo-drive-%s.mount" % letter.lower()
-        unit_path = self._systemd_unit_path(unit_name)
-        if unit_path.exists():
+    def _remove_systemd_unit(self, dirname: str) -> None:
+        names = {
+            "gpo-drive-%s.mount" % dirname.lower().replace("/", "-"),
+        }
+        # Pre-title-rename units used letter only.
+        letter = dirname.split("_", 1)[0]
+        if letter and letter.lower() != dirname.lower():
+            names.add("gpo-drive-%s.mount" % letter.lower())
+        for unit_name in names:
+            unit_path = self._systemd_unit_path(unit_name)
+            if not unit_path.exists():
+                continue
             subprocess.run(
                 ["systemctl", "--user", "disable", unit_name],
                 check=False,

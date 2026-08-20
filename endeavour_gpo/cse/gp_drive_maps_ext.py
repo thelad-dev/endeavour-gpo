@@ -8,6 +8,7 @@ import os
 from typing import Any, Optional
 
 from endeavour_gpo.drives.filters import FilterContext, evaluate_filters
+from endeavour_gpo.drives.home import AD_HOME_GUID, AD_HOME_UID, fetch_home_drive
 from endeavour_gpo.drives.mounter import CifsMounter, MountError
 from endeavour_gpo.drives.parser import DriveMap, parse_drives_element
 
@@ -166,6 +167,7 @@ class gp_drive_maps_ext(gp_xml_ext, gp_misc_applier):
                     self.unapply(guid, key, val)
 
         ctx = self._filter_context()
+        mapped_letters: set[str] = set()
         for gpo in changed_gpo_list:
             if not gpo.file_sys_path:
                 continue
@@ -214,9 +216,31 @@ class gp_drive_maps_ext(gp_xml_ext, gp_misc_applier):
 
                 key = drive.uid or drive.cifs_source()
                 kept.append(key)
+                if drive.mount_letter:
+                    mapped_letters.add(drive.mount_letter)
                 self.apply(gpo.name, key, drive)
 
             self.clean(gpo.name, keep=kept)
+
+        self._apply_home_drive(mapped_letters)
+
+    def _apply_home_drive(self, mapped_letters: set[str]) -> None:
+        """Map AD homeDirectory/homeDrive (e.g. H: → \\\\dfs\\homes\\user)."""
+        drive = fetch_home_drive(self.username, self.lp, self.creds)
+        if drive is None:
+            old = self.cache_get_attribute_value(AD_HOME_GUID, AD_HOME_UID)
+            if old:
+                self.unapply(AD_HOME_GUID, AD_HOME_UID, old)
+            return
+
+        if drive.mount_letter and drive.mount_letter in mapped_letters:
+            samba_log.debug(
+                "Skipping AD home drive %s; letter already mapped by GPO Preferences"
+                % drive.mount_letter
+            )
+            return
+
+        self.apply(AD_HOME_GUID, AD_HOME_UID, drive)
 
     def rsop(self, gpo) -> dict:
         output: dict[str, str] = {}
@@ -234,7 +258,7 @@ class gp_drive_maps_ext(gp_xml_ext, gp_misc_applier):
                 continue
             if drive.filters and not evaluate_filters(drive.filters, ctx):
                 continue
-            label = drive.label or drive.mount_letter or drive.uid
+            label = drive.label or drive.mount_dirname or drive.uid
             if drive.should_mount:
                 spec = CifsMounter(self.username).build_spec(drive, write_credentials=False)
                 output[label] = "mount.cifs %s %s -o %s" % (
@@ -244,7 +268,7 @@ class gp_drive_maps_ext(gp_xml_ext, gp_misc_applier):
                 )
             elif drive.should_unmount:
                 output[label] = "umount %s" % (
-                    CifsMounter(self.username).runtime_root / drive.mount_letter
+                    CifsMounter(self.username).runtime_root / drive.mount_dirname
                 )
         return output
 

@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
 from endeavour_gpo.drives.filters import GppFilter, parse_filters_element
+
+_UNSAFE_DIR_CHARS = re.compile(r"[^\w\-]+", re.UNICODE)
 
 ACTION_CREATE = "C"
 ACTION_UPDATE = "U"
@@ -51,6 +54,29 @@ class DriveMap:
     @property
     def mount_letter(self) -> str:
         letter = (self.letter or "").rstrip(":").upper()
+        return letter
+
+    @property
+    def folder_title(self) -> str:
+        """Short title for ~/netzlaufwerke/<letter>_<title>/ (e.g. IT, PUBLIC)."""
+        raw = (self.label or "").strip()
+        if not raw:
+            source = self.cifs_source()
+            raw = source.rstrip("/").split("/")[-1] if source else ""
+        if not raw:
+            return ""
+        # "PUBLIC (\\dfs\\public)" → "PUBLIC"
+        raw = re.split(r"[(\[]", raw, maxsplit=1)[0].strip()
+        cleaned = _UNSAFE_DIR_CHARS.sub("_", raw).strip("_")
+        return cleaned
+
+    @property
+    def mount_dirname(self) -> str:
+        """Directory under netzlaufwerke: ``Q_IT``, ``Z_PUBLIC``, ``H_ladwein``."""
+        letter = self.mount_letter or "X"
+        title = self.folder_title
+        if title:
+            return "%s_%s" % (letter, title)
         return letter
 
     @property
