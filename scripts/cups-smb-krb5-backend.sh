@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # CUPS smb-Backend mit Kerberos-Ticket des druckenden Users.
-# Läuft als root (Mode 0700), ruft danach /usr/bin/smbspool auf.
+# Installation: Mode 0700, Owner root → cupsd startet uns als root.
 set -euo pipefail
 
 REAL_SMBSPOOL=/usr/bin/smbspool
@@ -25,22 +25,22 @@ pick_ccache() {
       return 0
     fi
   done
-  # gssproxy / keyring variants
-  if [[ -n "${uid}" ]]; then
-    echo "KEYRING:persistent:${uid}"
-    return 0
-  fi
   return 1
 }
 
+# CUPS übergibt: argv[1]=job-id argv[2]=user …
+JOB_USER="${2:-}"
 UID_NUM="${AUTH_UID:-}"
-if [[ -z "${UID_NUM}" && -n "${USER:-}" ]]; then
-  UID_NUM="$(id -u "${USER}" 2>/dev/null || true)"
+
+if [[ -z "${UID_NUM}" && -n "${JOB_USER}" ]]; then
+  UID_NUM="$(id -u "${JOB_USER}" 2>/dev/null || true)"
 fi
 
 if [[ -n "${UID_NUM}" ]]; then
   if CC="$(pick_ccache "${UID_NUM}")"; then
     export KRB5CCNAME="${CC}"
+  else
+    echo "WARNING: kein Kerberos-ccache für uid=${UID_NUM} user=${JOB_USER}" >&2
   fi
 fi
 

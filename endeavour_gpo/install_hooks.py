@@ -108,18 +108,21 @@ def _install_cups_smb_krb5_backend(scripts_dir: Path) -> None:
     """Replace world-readable smb symlink with root-only Kerberos wrapper."""
     src = scripts_dir / "cups-smb-krb5-backend.sh"
     if not src.is_file():
+        print(f"Warnung: CUPS-Backend-Skript fehlt: {src}", file=sys.stderr)
         return
     backend = Path("/usr/lib/cups/backend/smb")
     backup = Path("/usr/lib/cups/backend/smb.endeavour-gpo-orig")
-    if backend.is_symlink() or (backend.is_file() and not backup.exists()):
+    if backend.is_symlink():
+        target = os.readlink(backend)
         if not backup.exists():
-            # Keep a pointer to the real smbspool
-            if backend.is_symlink():
-                target = os.readlink(backend)
-                backup.write_text(target + "\n", encoding="utf-8")
-            else:
-                shutil.copy2(backend, backup)
-    # Install wrapper as mode 0700 so cupsd runs it as root (can read user tickets).
+            backup.write_text(target + "\n", encoding="utf-8")
+        backend.unlink()
+    elif backend.is_file() and not backup.exists():
+        shutil.copy2(backend, backup)
+        backend.unlink()
+    # Must not follow a leftover symlink — copy2 would overwrite smbspool.
+    if backend.exists() or backend.is_symlink():
+        backend.unlink()
     shutil.copy2(src, backend)
     os.chmod(backend, 0o700)
     os.chown(backend, 0, 0)
