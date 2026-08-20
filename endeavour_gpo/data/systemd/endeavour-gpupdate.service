@@ -1,0 +1,10 @@
+[Unit]
+Description=endeavour-gpo: AD Group Policy refresh (Computer + active users)
+Documentation=https://github.com/thelad-dev/endeavour-gpo
+After=network-online.target winbind.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/endeavour-gpupdate --force --all-sessions
+Nice=10

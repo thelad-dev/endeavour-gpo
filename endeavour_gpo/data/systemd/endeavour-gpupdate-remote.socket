@@ -1,0 +1,10 @@
+[Unit]
+Description=endeavour-gpo: remote gpupdate activation socket (localhost)
+Documentation=https://github.com/thelad-dev/endeavour-gpo
+
+[Socket]
+ListenStream=127.0.0.1:46327
+Accept=yes
+
+[Install]
+WantedBy=sockets.target

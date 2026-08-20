@@ -39,6 +39,12 @@ endeavour-gpupdate = "endeavour_gpo.gpupdate:main"
 where = ["."]
 include = ["endeavour_gpo*"]
 
+[tool.setuptools.package-data]
+endeavour_gpo = [
+    "data/systemd/*",
+    "data/scripts/*",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
