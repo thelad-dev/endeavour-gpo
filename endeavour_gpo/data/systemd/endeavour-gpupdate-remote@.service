@@ -1,0 +1,9 @@
+[Unit]
+Description=endeavour-gpo: remote gpupdate instance %i
+Documentation=https://github.com/thelad-dev/endeavour-gpo
+After=network-online.target winbind.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/endeavour-gpupdate --force --all-sessions
+StandardInput=socket

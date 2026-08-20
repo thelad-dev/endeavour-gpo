@@ -22,15 +22,23 @@ SMB_INCLUDE = """# Managed by endeavour-gpo-register — do not edit by hand unl
 """
 
 
-def _package_data_dir() -> Path:
-    here = Path(__file__).resolve().parent.parent / "packaging" / "systemd"
-    if here.is_dir():
-        return here
-    raise FileNotFoundError("packaging/systemd not found next to endeavour_gpo package")
+def _data_root() -> Path:
+    """Bundled data next to this module (works for editable and wheel installs)."""
+    bundled = Path(__file__).resolve().parent / "data"
+    if (bundled / "systemd").is_dir():
+        return bundled
+    # Fallback: repo checkout layout
+    repo = Path(__file__).resolve().parent.parent
+    if (repo / "packaging" / "systemd").is_dir():
+        return repo / "packaging"
+    raise FileNotFoundError(
+        "Packaging-Daten nicht gefunden (endeavour_gpo/data oder packaging/)."
+    )
 
 
 def install_systemd_units() -> None:
-    src_dir = _package_data_dir()
+    data = _data_root()
+    src_dir = data / "systemd" if (data / "systemd").is_dir() else data
     dest = Path("/etc/systemd/system")
     for name in UNIT_FILES:
         src = src_dir / name
@@ -41,20 +49,48 @@ def install_systemd_units() -> None:
         shutil.copy2(src, target)
         print(f"Installiert {target}")
 
-    script_src = Path(__file__).resolve().parent.parent / "scripts" / "endeavour-gpupdate-login.sh"
-    if script_src.is_file():
-        script_dest = Path("/usr/local/lib/endeavour-gpo/endeavour-gpupdate-login.sh")
-        script_dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(script_src, script_dest)
-        os.chmod(script_dest, 0o755)
-        print(f"Installiert {script_dest}")
+    scripts_dir = data / "scripts"
+    if not scripts_dir.is_dir():
+        scripts_dir = Path(__file__).resolve().parent.parent / "scripts"
 
-    remote_src = Path(__file__).resolve().parent.parent / "scripts" / "remote-gpupdate.sh"
+    login_src = scripts_dir / "endeavour-gpupdate-login.sh"
+    if login_src.is_file():
+        login_dest = Path("/usr/local/lib/endeavour-gpo/endeavour-gpupdate-login.sh")
+        login_dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(login_src, login_dest)
+        os.chmod(login_dest, 0o755)
+        print(f"Installiert {login_dest}")
+
+    remote_src = scripts_dir / "remote-gpupdate.sh"
     if remote_src.is_file():
         remote_dest = Path("/usr/local/bin/endeavour-gpupdate-remote")
         shutil.copy2(remote_src, remote_dest)
         os.chmod(remote_dest, 0o755)
         print(f"Installiert {remote_dest}")
+
+    guard_src = scripts_dir / "ac-sleep-guard.sh"
+    if guard_src.is_file():
+        guard_dest = Path("/usr/local/lib/endeavour-gpo/ac-sleep-guard.sh")
+        guard_dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(guard_src, guard_dest)
+        os.chmod(guard_dest, 0o755)
+        print(f"Installiert {guard_dest}")
+        udev = Path("/etc/udev/rules.d/99-endeavour-gpo-ac-nosleep.rules")
+        udev.write_text(
+            "# endeavour-gpo: kein System-Sleep solange Netzteil steckt\n"
+            'SUBSYSTEM=="power_supply", ENV{POWER_SUPPLY_TYPE}=="Mains", '
+            'ENV{POWER_SUPPLY_ONLINE}=="1", '
+            'RUN+="/usr/local/lib/endeavour-gpo/ac-sleep-guard.sh on"\n'
+            'SUBSYSTEM=="power_supply", ENV{POWER_SUPPLY_TYPE}=="Mains", '
+            'ENV{POWER_SUPPLY_ONLINE}=="0", '
+            'RUN+="/usr/local/lib/endeavour-gpo/ac-sleep-guard.sh off"\n',
+            encoding="utf-8",
+        )
+        print(f"Installiert {udev}")
+        subprocess.run(["udevadm", "control", "--reload"], check=False)
+        subprocess.run([str(guard_dest), "sync"], check=False)
+
+    _install_cups_smb_krb5_backend(scripts_dir)
 
     subprocess.run(["systemctl", "daemon-reload"], check=False)
     subprocess.run(["systemctl", "enable", "--now", "endeavour-gpupdate.timer"], check=False)
@@ -66,6 +102,29 @@ def install_systemd_units() -> None:
         ["systemctl", "enable", "endeavour-gpupdate-login.service"],
         check=False,
     )
+
+
+def _install_cups_smb_krb5_backend(scripts_dir: Path) -> None:
+    """Replace world-readable smb symlink with root-only Kerberos wrapper."""
+    src = scripts_dir / "cups-smb-krb5-backend.sh"
+    if not src.is_file():
+        return
+    backend = Path("/usr/lib/cups/backend/smb")
+    backup = Path("/usr/lib/cups/backend/smb.endeavour-gpo-orig")
+    if backend.is_symlink() or (backend.is_file() and not backup.exists()):
+        if not backup.exists():
+            # Keep a pointer to the real smbspool
+            if backend.is_symlink():
+                target = os.readlink(backend)
+                backup.write_text(target + "\n", encoding="utf-8")
+            else:
+                shutil.copy2(backend, backup)
+    # Install wrapper as mode 0700 so cupsd runs it as root (can read user tickets).
+    shutil.copy2(src, backend)
+    os.chmod(backend, 0o700)
+    os.chown(backend, 0, 0)
+    print(f"Installiert CUPS-Backend {backend} (Kerberos-Wrapper, mode 0700)")
+    subprocess.run(["systemctl", "try-reload-or-restart", "cups"], check=False)
 
 
 def ensure_samba_apply_gpo() -> None:

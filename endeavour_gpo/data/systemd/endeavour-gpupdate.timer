@@ -1,0 +1,13 @@
+[Unit]
+Description=endeavour-gpo: periodic Group Policy refresh (~Windows 90+0-30 min)
+Documentation=https://github.com/thelad-dev/endeavour-gpo
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=90min
+RandomizedDelaySec=30min
+Persistent=true
+Unit=endeavour-gpupdate.service
+
+[Install]
+WantedBy=timers.target
