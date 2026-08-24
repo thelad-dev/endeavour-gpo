@@ -1,0 +1,12 @@
+[Unit]
+Description=endeavour-gpo: re-check AC no-sleep policy
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=2min
+AccuracySec=30s
+Persistent=true
+Unit=endeavour-gpo-ac-nosleep-sync.service
+
+[Install]
+WantedBy=timers.target

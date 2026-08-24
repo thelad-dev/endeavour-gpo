@@ -10,9 +10,142 @@ alwaysApply: true
 > beschreiben den Stand von damals und sind als ~~überholt~~ markiert, sobald ein neuerer Eintrag
 > sie erledigt. Ältere Einträge nie als Arbeitsanweisung lesen.
 
-## 2026-08-20 — NB64 Redeploy + AC-Standby aus + Printer-URI-Fix
+## 2026-08-24 — NB64 Vollanalyse (.2.142); vm64 User-Setup
+
+**Status:** Vollanalyse + DNS/timesyncd/br0-Fixes; Repro-Pfad in endeavour-setup geschärft.
+
+**vm64:** bewusst nicht weiter vom Agenten — User macht Setup fertig. Domäne `shut off` (Stand Analyse).
+
+**Fixes heute:**
+- `systemd-timesyncd` disable --now (Konflikt mit chrony)
+- `br0-lan` down (WLAN, kein Carrier)
+- DNS A `NB64` am DC: nur noch **192.168.2.142** (Alt `.173` + virbr0 `.122.1` entfernt)
+- SSH-Host `nb64` → `.2.142`
+
+**Docs:** siehe endeavour-setup Tätigkeitsnachweis / `scripts/client-abnahme.sh`.
+
+**Entscheidung:** Keine DHCP-Reservation — Erreichbarkeit über DNS-A (wandernder Client).
+
+**Noch offen (aktuell):**
+1. Druck-Backend / SOPHOS ACCESS_DENIED
+2. `no-mistakes update`
+3. Optional: samba `interfaces=` / DNS-Update nur physische Uplink-IP
+
+---
+
+## 2026-08-23 — vm64 Netz auf NB64 (.88) repariert — *historisch*
+
+**Status:** ~~offen~~ → Analyse 2026-08-24; vm64 Setup User.
+
+**Ursachen (damals):**
+1. `virtnetworkd` nicht aktiv → libvirt-`default`-Netz/`virbr0` defekt, VM war `shut off`
+2. VM-Start scheiterte an `virtio-vga-gl` → Video auf `virtio-vga` ohne GL
+3. `br0-lan` ohne Ethernet-Slave hing in „connecting“
+4. Gast Login-Screen `Admin`
+
+**Fixes (damals):** virtnetworkd, br0 Autoconnect aus, NAT, Desktop-Shortcuts.
+
+**Noch offen (Stand damals — überholt):** siehe obersten Eintrag.
+---
+
+## 2026-08-21 — Morgen: NB64 Vollanalyse im .88-Netz — *historisch*
+
+**Status:** Teil erledigt 2026-08-23 (vm64-Netz); Rest siehe obersten Eintrag.
+
+**Geplant (wenn Gerät im 192.168.88.0/24 online):** komplette Ferndiagnose DNS, AD/Join, Winbind/Kerberos, endeavour-gpo, Energie, Netz/Bridge, KVM/vm64, SSH; plus **chrony**, **installierte Software-Inventur**, Prüfung lokaler User **`<sam>_local`** (Umbenennung falls nötig); Fixes nachziehen.
+
+**Vorbereitung:** Skript `/tmp/nb64-vollanalyse.sh` (erweitert um chrony/Software/`*_local`).
+
+**Bekannte Anhaltspunkte:** UniFi/früher: Intel-MAC `08:8e:90:3f:fd:e0` / fixed oft `192.168.88.126`; Firmennetz zuletzt Bridge `br0` / wechselnde `.2.x`-IPs.
+
+**Noch offen (Stand damals — überholt):** siehe obersten Eintrag.
+
+---
+
+## 2026-08-21 — Repo endeavour-setup (privat, thelad-dev) — *historisch*
+
+**Status:** https://github.com/thelad-dev/endeavour-setup (`PRIVATE`), Commit `4a8ec0b`.
+
+---
+
+## 2026-08-21 — Notebook-Installationsvorlage (vollständig) — *historisch*
+
+**Status:** Vorlage geschrieben; kanonisch nach `endeavour-setup` verschoben/gespiegelt.
+
+---
+
+## 2026-08-21 — Power-Taste=Suspend + Notebook-Vorlage — *historisch*
+
+**Status:** Power-Policy auf NB64; Erstfassung Doku — ~~ausgebaut~~ siehe obersten Eintrag.
+
+---
+
+## 2026-08-21 — AC-No-Sleep redeploy + Win11-Install gestartet (NB64) — *historisch*
+
+**Status:** NB64 online; AC-Guard aktiv; Win11-Setup gestartet.
+
+---
+
+## 2026-08-20 — AC-No-Sleep nachgebessert (Persistenz-Fehler) — *historisch*
+
+**Status:** Code gehärtet; ~~Redeploy ausstehend~~ → erledigt 2026-08-21.
+
+---
+
+## 2026-08-20 — Win11-Pro unattended auf vm64 (blockiert: NB64 offline) — *historisch*
+
+**Status:** Vorbereitung fertig; Ausführung wartet auf NB64.
+
+**Noch offen (Stand damals — überholt):** siehe obersten Eintrag.
+
+---
+
+## 2026-08-20 — Offline-AD-Login + Netz vor Plasmalogin (NB64) — *historisch*
+
+**Status:** Auf NB64 konfiguriert; in endeavour-gpo-Install-Hooks übernommen.
+
+**Offline-Login (winbind):**
+- `winbind offline logon = yes` in `/etc/samba/endeavour-gpo.conf`
+- PAM hatte bereits `pam_winbind … cached_login`
+- **Wichtig:** Einmal online einloggen, damit das Passwort gecacht wird
+
+**Netz vor Login:**
+- Unit `endeavour-gpo-nm-prelogin.service` aktiviert alle System-NM-Verbindungen
+- Plasmalogin-Drop-in: After/Wants `NetworkManager-wait-online` + Prelogin-Unit
+- System-Connections: permissions leer, autoconnect; Ethernet-Priorität 100
+- Hinweis: vorhandenes WLAN-Profil SSID `6675636B796F75` ist nicht im Scan; Firmen-WLAN „DENSION Dental“ ist 802.1X (separat anlegen)
+
+**Geändert:** `install_hooks.py` (SMB_INCLUDE + NM), `scripts/nm-prelogin-up.sh`, Units
+
+**Noch offen (Stand damals — überholt):** siehe obersten Eintrag.
+
+---
+
+## 2026-08-20 — Standby am Netz wirklich aus (Plasma-6-Config + Target-Mask) — *historisch*
+
+**Status:** Nachbesserung — Gerät ging weiter in Standby; Ursache/Fix unten.
+→ Offline-Login/Netz: siehe neuer Eintrag.
+
+---
+
+## 2026-08-20 — AC-Sleep global hart; Testdruck Ei (Kerberos ok, Spool denied) — *historisch*
+
+**Status:** Am Netz kein Suspend/Hibernate/Idle-Sleep systemweit; Testdruck Ei erreicht SOPHOS mit Kerberos, Job-Start wird abgewiesen.
+→ Standby kam trotzdem → siehe neuer Eintrag (Plasma-6-Config + Mask).
+
+---
+
+## 2026-08-20 — NB64 online/DNS; Testdruck Buchhaltung blockiert (Windows ACL) — *historisch*
+
+**Status:** Gerät erreichbar; CUPS-Kerberos-Pfad repariert; Druckjob auf SOPHOS weiter `ACCESS_DENIED`.
+→ AC-Sleep + Ei-Testdruck: siehe neuer Eintrag. WS88-Druck Buchhaltung bestätigt Rechte; Linux-Pfad weiter offen.
+
+---
+
+## 2026-08-20 — NB64 Redeploy + AC-Standby aus + Printer-URI-Fix — *historisch*
 
 **Status:** NB64 wieder online; endeavour-gpo aktuell; Standby bei Netz aus; 6 CUPS-Queues aktiv.
+→ Testdruck/CUPS-Kerberos: siehe neuer Eintrag.
 
 **Erledigt:**
 - `main` auf NB64, `endeavour-gpo-register`, Timer/Socket aktiv, `apply group policies = yes`
@@ -24,7 +157,7 @@ alwaysApply: true
 - **logind:** `/etc/systemd/logind.conf.d/90-no-sleep-on-ac.conf` (`HandleLidSwitchExternalPower=ignore`, IdleAction=ignore, Suspend/Hibernate-Keys ignore)
 
 **Noch offen (aktuell):**
-1. `no-mistakes update`
+1. ~~`no-mistakes update`~~ → weiter offen, siehe oberster Eintrag
 2. Optional: Batterie-Profil bewusst belassen (Sleep weiterhin möglich ohne Netz)
 
 ---

@@ -1,0 +1,13 @@
+[Unit]
+Description=endeavour-gpo: block sleep/hibernate while on AC power
+After=multi-user.target
+ConditionPathExists=/usr/local/lib/endeavour-gpo/ac-sleep-guard.sh
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Nur sync — kein ExecStop=off, sonst hebt systemctl stop die Masken auch am Netz auf
+ExecStart=/usr/local/lib/endeavour-gpo/ac-sleep-guard.sh sync
+
+[Install]
+WantedBy=multi-user.target

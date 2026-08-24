@@ -1,0 +1,15 @@
+[Unit]
+Description=endeavour-gpo: NetworkManager-Systemverbindungen vor Login aktivieren
+DefaultDependencies=no
+Wants=NetworkManager.service
+After=NetworkManager.service network-pre.target
+Before=NetworkManager-wait-online.service display-manager.service plasmalogin.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/endeavour-gpo/nm-prelogin-up.sh
+RemainAfterExit=yes
+TimeoutStartSec=90
+
+[Install]
+WantedBy=multi-user.target graphical.target

@@ -1,0 +1,7 @@
+[Unit]
+Description=endeavour-gpo: AC no-sleep sync (timer tick)
+ConditionPathExists=/usr/local/lib/endeavour-gpo/ac-sleep-guard.sh
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/endeavour-gpo/ac-sleep-guard.sh sync

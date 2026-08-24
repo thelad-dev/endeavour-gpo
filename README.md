@@ -10,6 +10,9 @@ Active-Directory-**Gruppenrichtlinien** auf **EndeavourOS** (und ähnliche Linux
 | Automatik | systemd-Timer (~90+0–30 min), Login-Hook, winbind `apply group policies` |
 | Remote | SSH-Skript oder localhost-Socket `:46327` |
 
+**Notebook-Rollout (AD, Energie, Software):** kanonisch im privaten Repo  
+[`thelad-dev/endeavour-setup`](https://github.com/thelad-dev/endeavour-setup) — lokal Spiegel: [`docs/endeavouros-notebook-vorlage.md`](docs/endeavouros-notebook-vorlage.md)
+
 ---
 
 ## Voraussetzungen
