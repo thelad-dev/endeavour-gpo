@@ -42,6 +42,7 @@ include = ["endeavour_gpo*"]
 [tool.setuptools.package-data]
 endeavour_gpo = [
     "data/systemd/*",
+    "data/systemd/user/*",
     "data/scripts/*",
 ]
 

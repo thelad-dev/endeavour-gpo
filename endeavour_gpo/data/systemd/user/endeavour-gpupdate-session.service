@@ -1,0 +1,14 @@
+[Unit]
+Description=endeavour-gpo: AD drive maps after graphical login
+Documentation=https://github.com/thelad-dev/endeavour-gpo
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/endeavour-gpo/endeavour-gpupdate-session.sh
+TimeoutStartSec=180
+Nice=10
+
+[Install]
+WantedBy=graphical-session.target

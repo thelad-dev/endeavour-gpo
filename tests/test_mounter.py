@@ -104,6 +104,34 @@ def test_mount_calls_mount_cifs(tmp_path):
     assert spec.target.exists()
 
 
+def test_persistent_mount_does_not_install_user_unit(tmp_path):
+    mounter = _mounter(tmp_path)
+    drive = _drive(persistent=True)
+    unit_dir = tmp_path / "home" / ".config" / "systemd" / "user"
+    leftover = unit_dir / "gpo-drive-s_share.mount"
+    leftover.parent.mkdir(parents=True, exist_ok=True)
+    leftover.write_text("stale\n", encoding="utf-8")
+
+    with pytest.MonkeyPatch.context() as mp:
+        import endeavour_gpo.drives.mounter as mounter_mod
+
+        def fake_run(cmd, **kwargs):
+            class Result:
+                returncode = 0
+                stderr = ""
+                stdout = ""
+
+            return Result()
+
+        mp.setattr(mounter_mod.subprocess, "run", fake_run)
+        mp.setattr(mounter, "_is_mounted", lambda path: False)
+        spec = mounter.mount(drive)
+
+    assert spec.systemd_unit_name == "gpo-drive-s_share.mount"
+    assert not leftover.exists()
+    assert not unit_dir.exists() or list(unit_dir.iterdir()) == []
+
+
 def test_mount_failure(tmp_path):
     mounter = _mounter(tmp_path)
 

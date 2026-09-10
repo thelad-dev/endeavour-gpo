@@ -28,7 +28,7 @@ systemctl enable --now cups.service winbind.service 2>/dev/null || true
 echo "==> 2/5 Python-Paket installieren"
 python3 -m pip install --upgrade --break-system-packages -e "$ROOT"
 
-echo "==> 3/5 CSE registrieren + systemd/Timer/Socket"
+echo "==> 3/5 CSE registrieren + systemd/Timer/Socket/Session-Hook"
 endeavour-gpo-register
 
 echo "==> 4/5 Kurzprüfung"
@@ -37,6 +37,7 @@ command -v endeavour-gpo-register >/dev/null
 testparm -s --parameter-name="apply group policies" 2>/dev/null || true
 systemctl is-enabled endeavour-gpupdate.timer >/dev/null
 systemctl is-enabled endeavour-gpupdate-remote.socket >/dev/null
+systemctl --global is-enabled endeavour-gpupdate-session.service >/dev/null
 
 echo "==> 5/5 Erste Richtlinienanwendung (aktueller sudo-User)"
 if [[ -n "${SUDO_USER:-}" && "${SUDO_USER}" != root ]]; then

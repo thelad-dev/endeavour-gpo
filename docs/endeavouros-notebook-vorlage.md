@@ -247,8 +247,8 @@ sudo ./scripts/install.sh
 |----------|--------|
 | Samba | `/etc/samba/endeavour-gpo.conf` — `apply group policies = yes`, `winbind offline logon = yes` |
 | CSE | Drives + Printers in `gpext.conf` (Endeavour-CSE ans Ende) |
-| Timer | `endeavour-gpupdate.timer` (~90 min + Jitter) |
-| Login | `endeavour-gpupdate-login.service` |
+| Timer | `endeavour-gpupdate.timer` (~90 min, `OnUnitInactiveSec`) |
+| Login | Computer: `endeavour-gpupdate-login.service` (`graphical.target`). User-Laufwerke: `endeavour-gpupdate-session.service` (`graphical-session.target`) |
 | Remote | Socket `:46327` / `endeavour-gpupdate-remote` |
 | Energie | `ac-sleep-guard` + `endeavour-gpo-ac-nosleep.{service,sync.service,timer}` |
 | Netz | `endeavour-gpo-nm-prelogin.service` + Plasmalogin-Drop-in |
@@ -393,6 +393,8 @@ ls ~/netzlaufwerke   # als AD-User nach Login
 lpstat -a
 systemctl is-enabled sshd endeavour-gpupdate.timer \
   endeavour-gpo-ac-nosleep.timer endeavour-gpo-nm-prelogin.service
+systemctl --user is-enabled endeavour-gpupdate-session.service
+findmnt -t cifs | grep netzlaufwerke
 sudo /usr/local/lib/endeavour-gpo/ac-sleep-guard.sh status
 # Power-Taste → Suspend
 # Bei KVM: Bridge nur am Ethernet; WLAN → NAT; br0-lan ohne Carrier down
@@ -400,7 +402,7 @@ sudo /usr/local/lib/endeavour-gpo/ac-sleep-guard.sh status
 
 - [ ] Ein SOPHOS-Drucker testen
 - [ ] Laufwerk lesen/schreiben
-- [ ] Reboot → AD-Login, Timer und AC-Policy wieder aktiv
+- [ ] Reboot → AD-Login, `~/netzlaufwerke` gemountet, Timer und AC-Policy wieder aktiv
 - [ ] DNS zeigt genau die aktuelle IP
 - [ ] SSH von IT-Netz erreichbar (`sshd` enabled)
 

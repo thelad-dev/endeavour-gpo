@@ -72,6 +72,7 @@ def register_cse() -> int:
         "Endeavour CSEs run last in gpext.conf."
     )
     print("Local refresh:  sudo endeavour-gpupdate --force")
+    print("User login:     systemd --user start endeavour-gpupdate-session.service")
     print("All sessions:   sudo endeavour-gpupdate --force --all-sessions")
     print("Remote (SSH):   endeavour-gpupdate-remote <host>   # from admin PC")
     print("Remote socket:  localhost:46327 (starts gpupdate for active sessions)")

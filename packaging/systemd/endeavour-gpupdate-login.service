@@ -1,5 +1,5 @@
 [Unit]
-Description=endeavour-gpo: Group Policy refresh after graphical login
+Description=endeavour-gpo: Computer Group Policy after graphical.target
 Documentation=https://github.com/thelad-dev/endeavour-gpo
 After=graphical.target network-online.target winbind.service
 Wants=network-online.target

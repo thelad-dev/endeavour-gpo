@@ -1,5 +1,5 @@
 #!/bin/bash
-# Refresh GPO for every active session shortly after graphical login / boot.
+# Computer-GPO shortly after display-manager / network.
+# User drive maps: systemd --user endeavour-gpupdate-session.service
 set -euo pipefail
-sleep 15
-exec /usr/bin/endeavour-gpupdate --force --all-sessions
+exec /usr/bin/endeavour-gpupdate --force --computer

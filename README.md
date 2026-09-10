@@ -7,7 +7,7 @@ Active-Directory-**Gruppenrichtlinien** auf **EndeavourOS** (und ähnliche Linux
 | Netzlaufwerke (GPP Drives + AD-Home) | `mount.cifs` unter `~/netzlaufwerke/<Buchstabe>_<Titel>/` |
 | Netzwerkdrucker (GPP SharedPrinter) | CUPS-Queues `endeavour-<server>-<share>` mit Kerberos |
 | Richtlinien aktualisieren | `endeavour-gpupdate` (wie Windows `gpupdate /force`) |
-| Automatik | systemd-Timer (~90+0–30 min), Login-Hook, winbind `apply group policies` |
+| Automatik | systemd-Timer (~90 min), Computer-GPO am Display-Manager, **User-GPO nach grafischem Login**, winbind `apply group policies` |
 | Remote | SSH-Skript oder localhost-Socket `:46327` |
 
 **Notebook-Rollout (AD, Energie, Software):** kanonisch im privaten Repo  
@@ -35,8 +35,9 @@ sudo ./scripts/install.sh
 ```
 
 Das Skript installiert Abhängigkeiten, das Python-Paket, registriert die CSEs,
-aktiviert Timer/Socket, richtet Samba `apply group policies = yes` ein und
-installiert ein CUPS-`smb`-Backend mit Kerberos-Unterstützung.
+aktiviert Timer, Computer-Login-Service, **User-Session-Hook** und Remote-Socket,
+richtet Samba `apply group policies = yes` ein und installiert ein CUPS-`smb`-Backend
+mit Kerberos-Unterstützung.
 
 Danach (falls nicht schon im Skript gelaufen):
 
@@ -68,6 +69,9 @@ sudo endeavour-gpupdate --rsop
 
 # Alle aktiven Sitzungen (Timer / Remote)
 sudo endeavour-gpupdate --force --all-sessions
+
+# User-Laufwerke nach grafischem Login (systemd --user)
+systemctl --user start endeavour-gpupdate-session.service
 ```
 
 ### Wo liegen die Laufwerke?
@@ -77,6 +81,8 @@ sudo endeavour-gpupdate --force --all-sessions
 ~/netzlaufwerke/Z_PUBLIC
 ~/netzlaufwerke/H_ladwein     # aus AD homeDirectory/homeDrive
 ```
+
+Zusätzliche CIFS-Shares (nicht aus GPP): `/etc/endeavour-gpo/extra-drives.conf`.
 
 ### Drucker
 
@@ -104,7 +110,7 @@ Socket nur lokal: `127.0.0.1:46327`.
 
 1. CSEs in `/var/lib/samba/gpext.conf` (Drive + Printer, ans Ende sortiert)
 2. Include `/etc/samba/endeavour-gpo.conf` → `apply group policies = yes`
-3. systemd: Timer, Login-Service, Remote-Socket
+3. systemd: Timer, Computer-Login-Service, **User-Session-Hook** (`graphical-session.target`), sudoers, Remote-Socket
 4. CUPS: Kerberos-fähiges `smb`-Backend
 5. Optional: udev-Sleep-Guard am Netzteil (wenn Skript vorhanden)
 

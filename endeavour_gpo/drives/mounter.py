@@ -127,8 +127,10 @@ class CifsMounter:
                 self.notify_mount_failure(drive, message)
                 raise MountError(message)
 
+        # User .mount units cannot mount CIFS (unit name ≠ Where=, no CAP_SYS_ADMIN).
+        # Persistence: systemd --user endeavour-gpupdate-session.service after login.
         if spec.systemd_unit_name:
-            self._install_systemd_unit(spec)
+            self._remove_systemd_unit(spec.target.name)
         return spec
 
     def notify_mount_failure(self, drive: DriveMap, error: str) -> None:

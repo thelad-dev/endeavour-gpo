@@ -20,6 +20,22 @@ UNIT_FILES = (
     "endeavour-gpo-nm-prelogin.service",
 )
 
+USER_UNIT_FILES = ("endeavour-gpupdate-session.service",)
+
+SUDOERS_SESSION = """# Managed by endeavour-gpo-register.
+# Session-Hook darf User-GPO (Laufwerke) ohne Passwort als root anwenden.
+Defaults!/usr/local/lib/endeavour-gpo/endeavour-gpupdate-session.sh !requiretty
+ALL ALL=(root) NOPASSWD: /usr/local/lib/endeavour-gpo/endeavour-gpupdate-session.sh
+"""
+
+EXTRA_DRIVES_EXAMPLE = """# Zusätzliche CIFS-Laufwerke neben GPP Drives / AD-Home.
+# Eine Zeile: //server/share  Ordnername
+# Ordnername ist relativ zu ~/netzlaufwerke/
+#
+# Beispiel:
+# //dfs/Marketing  M_Marketing
+"""
+
 LOGIND_NOSLEEP = """# endeavour-gpo: Idle/Deckel aus; Power-Taste = Suspend
 [Login]
 IdleAction=ignore
@@ -85,6 +101,18 @@ def install_systemd_units() -> None:
         shutil.copy2(login_src, login_dest)
         os.chmod(login_dest, 0o755)
         print(f"Installiert {login_dest}")
+
+    session_src = scripts_dir / "endeavour-gpupdate-session.sh"
+    if session_src.is_file():
+        session_dest = Path("/usr/local/lib/endeavour-gpo/endeavour-gpupdate-session.sh")
+        session_dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(session_src, session_dest)
+        os.chmod(session_dest, 0o755)
+        print(f"Installiert {session_dest}")
+
+    _install_user_units(src_dir)
+    _install_sudoers_session()
+    _install_extra_drives_example()
 
     remote_src = scripts_dir / "remote-gpupdate.sh"
     if remote_src.is_file():
@@ -155,6 +183,10 @@ def install_systemd_units() -> None:
         check=False,
     )
     subprocess.run(
+        ["systemctl", "--global", "enable", "endeavour-gpupdate-session.service"],
+        check=False,
+    )
+    subprocess.run(
         ["systemctl", "enable", "--now", "endeavour-gpo-ac-nosleep.service"],
         check=False,
     )
@@ -166,6 +198,57 @@ def install_systemd_units() -> None:
         ["systemctl", "enable", "--now", "endeavour-gpo-nm-prelogin.service"],
         check=False,
     )
+
+
+def _install_user_units(src_dir: Path) -> None:
+    """systemd --user unit: GPO drive maps after graphical-session.target."""
+    user_dest = Path("/etc/systemd/user")
+    user_dest.mkdir(parents=True, exist_ok=True)
+    user_src_dir = src_dir / "user"
+    for name in USER_UNIT_FILES:
+        src = user_src_dir / name
+        if not src.is_file():
+            src = src_dir / name
+        if not src.is_file():
+            print(f"Warnung: User-Unit fehlt: {name}", file=sys.stderr)
+            continue
+        target = user_dest / name
+        shutil.copy2(src, target)
+        print(f"Installiert {target}")
+
+
+def _install_sudoers_session() -> None:
+    dest = Path("/etc/sudoers.d/endeavour-gpupdate")
+    tmp = dest.with_suffix(".tmp")
+    tmp.write_text(SUDOERS_SESSION, encoding="utf-8")
+    os.chmod(tmp, 0o440)
+    check = subprocess.run(
+        ["visudo", "-c", "-f", str(tmp)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if check.returncode != 0:
+        tmp.unlink(missing_ok=True)
+        print(
+            "Warnung: sudoers für Session-Hook ungültig, nicht installiert: "
+            + (check.stderr or check.stdout).strip(),
+            file=sys.stderr,
+        )
+        return
+    tmp.replace(dest)
+    os.chmod(dest, 0o440)
+    print(f"Installiert {dest}")
+
+
+def _install_extra_drives_example() -> None:
+    dest = Path("/etc/endeavour-gpo/extra-drives.conf")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if dest.exists():
+        return
+    dest.write_text(EXTRA_DRIVES_EXAMPLE, encoding="utf-8")
+    os.chmod(dest, 0o644)
+    print(f"Installiert {dest}")
 
 
 def _install_prelogin_network(scripts_dir: Path, systemd_dir: Path) -> None:

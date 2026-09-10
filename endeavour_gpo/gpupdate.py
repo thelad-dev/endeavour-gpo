@@ -92,8 +92,20 @@ def _computer_update(*, force: bool, rsop: bool, unapply: bool, extra: list[str]
     return _run(cmd)
 
 
+def _is_local_user(name: str, uid: int) -> bool:
+    """True for /etc/passwd accounts (skip AD user GPO)."""
+    if uid < 1000:
+        return True
+    try:
+        with open("/etc/passwd", encoding="utf-8") as fh:
+            prefix = name + ":"
+            return any(line.startswith(prefix) for line in fh)
+    except OSError:
+        return False
+
+
 def _active_gui_sessions() -> list[tuple[str, int]]:
-    """Return (username, uid) for sessions with a usable runtime dir."""
+    """Return (username, uid) for AD sessions with a usable runtime dir."""
     found: dict[str, int] = {}
     try:
         proc = subprocess.run(
@@ -132,11 +144,12 @@ def _active_gui_sessions() -> list[tuple[str, int]]:
                 uid = int(props.get("UID", ""))
             except ValueError:
                 continue
-            if Path(f"/run/user/{uid}").is_dir():
+            if Path(f"/run/user/{uid}").is_dir() and not _is_local_user(name, uid):
                 found[name] = uid
     if not found and os.geteuid() != 0:
         pw = pwd.getpwuid(os.getuid())
-        found[pw.pw_name] = pw.pw_uid
+        if not _is_local_user(pw.pw_name, pw.pw_uid):
+            found[pw.pw_name] = pw.pw_uid
     return sorted(found.items(), key=lambda x: x[1])
 
 
